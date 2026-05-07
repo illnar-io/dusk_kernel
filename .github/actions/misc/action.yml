@@ -35,8 +35,8 @@ runs:
         CONFIG_LRU_GEN=y
         CONFIG_LRU_GEN_ENABLED=y
 
-        # ZRAM: built-in + zstd default (MULTI_COMP backported in phase2-patches)
-        CONFIG_ZRAM=y
+        # ZRAM: module + zstd default (multi-compression built-in on 6.1.157+)
+        CONFIG_ZRAM=m
         # CONFIG_ZRAM_DEF_COMP_LZORLE is not set
         CONFIG_ZRAM_DEF_COMP_ZSTD=y
         CONFIG_ZRAM_DEF_COMP="zstd"
