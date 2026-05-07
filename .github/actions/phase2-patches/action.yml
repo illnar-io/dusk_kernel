@@ -78,9 +78,9 @@ runs:
       working-directory: ${{ github.workspace }}/kernel/common
       run: |
         set -euo pipefail
-        # Check if kernel already has multi-compression support (present in 6.1.157+)
-        if grep -q 'ZRAM_MAX_COMPS' drivers/block/zram/zram_drv.h 2>/dev/null; then
-          echo "⚠ Kernel already has multi-compression support (ZRAM_MAX_COMPS found), skipping ZRAM multi-compression patches"
+        # Check if kernel already has multi-compression support (present in GKI 6.1.157+)
+        if grep -q 'struct zcomp \*comps\[' drivers/block/zram/zram_drv.h 2>/dev/null; then
+          echo "⚠ Kernel already has multi-compression support (comps[] found), skipping ZRAM multi-compression patches"
           exit 0
         fi
         PATCH_DIR="${{ github.workspace }}/kernel_patches/zram_multi_comp"
