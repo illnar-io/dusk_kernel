@@ -96,6 +96,12 @@ jobs:
         os_patch_level: ${{ steps.parse.outputs.os_patch_level }}
         sublevel: ${{ steps.extract.outputs.sublevel }}
 
+    - name: NTSYNC
+      if: contains(inputs.feature_set, 'NTSYNC') || inputs.feature_set == 'FULL'
+      uses: ./.github/actions/ntsync
+      with:
+        kernel_version: ${{ steps.parse.outputs.kernel_version }}
+
     - name: Baseband Guard
       if: contains(inputs.feature_set, 'BBG') || inputs.feature_set == 'FULL'
       uses: ./.github/actions/bbg
@@ -118,6 +124,14 @@ jobs:
       with:
         kernel_version: ${{ steps.parse.outputs.kernel_version }}
         android_version: ${{ steps.parse.outputs.android_version }}
+
+    - name: Phase 2 Patches (DUSK Report)
+      if: contains(inputs.feature_set, 'P2') || inputs.feature_set == 'FULL'
+      uses: ./.github/actions/phase2-patches
+      with:
+        kernel_version: ${{ steps.parse.outputs.kernel_version }}
+        android_version: ${{ steps.parse.outputs.android_version }}
+        sublevel: ${{ steps.extract.outputs.sublevel }}
 
     - name: Apply Module Check Bypass
       if: ${{ inputs.variant == 'Bypass' }}

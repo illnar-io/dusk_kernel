@@ -1,17 +1,17 @@
-name: 'Apply Kernel Branding & Timestamp'
-description: 'Apply Wild kernel branding to kernel version string'
+name: "Apply Kernel Branding & Timestamp"
+description: "Apply DUSK kernel branding to kernel version string"
 inputs:
   variant:
-    description: 'Variant of kernel to apply branding to'
+    description: "Variant of kernel to apply branding to"
     required: true
   kernel_version:
-    description: 'Kernel version (e.g., 6.1)'
+    description: "Kernel version (e.g., 6.1)"
     required: true
   android_version:
-    description: 'Android version (e.g., android14)'
+    description: "Android version (e.g., android14)"
     required: true
   sublevel:
-    description: 'Sublevel of kernel version (e.g., 1)'
+    description: "Sublevel of kernel version (e.g., 1)"
     required: true
 
 runs:
@@ -21,27 +21,27 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}/kernel/common
       run: |
-        CONFIG_FRAGMENT="${{ github.workspace }}/wild_gki.fragment"
+        CONFIG_FRAGMENT="${GITHUB_WORKSPACE}/wild_gki.fragment"
         touch "$CONFIG_FRAGMENT"
 
-        DEFCONFIG="${{ github.workspace }}/kernel/common/arch/arm64/configs/gki_defconfig"
+        DEFCONFIG="${GITHUB_WORKSPACE}/kernel/common/arch/arm64/configs/gki_defconfig"
 
-        if [ "${{ inputs.variant }}" == "Wild" ]; then
+        if [ "${{ inputs.variant }}" == "DUSK" ]; then
           tac scripts/setlocalversion | awk '!seen && /^echo / {seen=1; next} 1' | tac > scripts/setlocalversion.tmp
           mv scripts/setlocalversion.tmp scripts/setlocalversion
           if [[ ${{ inputs.kernel_version }} == "6.6" || ${{ inputs.kernel_version }} == "6.12" ]]; then
             KERNEL_STRING="${{ inputs.kernel_version }}.${{ inputs.sublevel }}-${{ inputs.android_version }}"
-            echo "echo \"$KERNEL_STRING-Wild\"" >> scripts/setlocalversion
+            echo "echo \"$KERNEL_STRING-DUSK\"" >> scripts/setlocalversion
           else
-            echo 'echo "-Wild"' >> scripts/setlocalversion
+            echo 'echo "-DUSK"' >> scripts/setlocalversion
           fi
           chmod +x scripts/setlocalversion
         else
           if grep -q '^CONFIG_LOCALVERSION=' "$DEFCONFIG"; then
             LOCALVERSION_VALUE="$(grep -m1 '^CONFIG_LOCALVERSION=' "$DEFCONFIG" | sed -E 's/^CONFIG_LOCALVERSION="?([^"]*)"?$/\1/')"
-           echo "CONFIG_LOCALVERSION=\"${LOCALVERSION_VALUE}-Wild\"" >> "$CONFIG_FRAGMENT"
+           echo "CONFIG_LOCALVERSION=\"${LOCALVERSION_VALUE}-DUSK\"" >> "$CONFIG_FRAGMENT"
           else
-            echo 'CONFIG_LOCALVERSION="-Wild"' >> "$CONFIG_FRAGMENT"
+            echo 'CONFIG_LOCALVERSION="-DUSK"' >> "$CONFIG_FRAGMENT"
           fi
         fi
 
@@ -55,12 +55,12 @@ runs:
 
         export SOURCE_DATE_EPOCH=$COMMIT_TIMESTAMP
         echo "SOURCE_DATE_EPOCH=$COMMIT_TIMESTAMP" >> $GITHUB_ENV
-        
+
         export KBUILD_BUILD_TIMESTAMP="$KERNEL_BUILD_DATE"
         echo "KBUILD_BUILD_TIMESTAMP=$KERNEL_BUILD_DATE" >> $GITHUB_ENV
 
     - name: Apply Kernel Configuration
-      if: ${{ inputs.variant == 'Wild' }}
+      if: ${{ inputs.variant == 'DUSK' }}
       shell: bash
       run: |
         cat >> "${{ github.workspace }}/wild_gki.fragment" << 'EOF'

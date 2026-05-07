@@ -1,0 +1,86 @@
+name: "Setup NTSYNC"
+description: "Apply Windows NT sync driver backport from upstream for GKI kernels"
+inputs:
+  kernel_version:
+    description: "Kernel version (e.g., 6.1)"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check if ntsync is already in tree
+      id: check
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel/common
+      run: |
+        if [ -f "drivers/misc/ntsync.c" ]; then
+          echo "ntsync already present in kernel source"
+          echo "in_tree=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "ntsync not found, will apply backport"
+          echo "in_tree=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Apply ntsync driver backport
+      if: steps.check.outputs.in_tree == 'false'
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel/common
+      run: |
+        set -euo pipefail
+        set -x
+
+        echo "Applying ntsync patches from local repo..."
+
+        # Apply base ntsync patch (creates ntsync.c and ntsync.h)
+        if patch -p1 --verbose < "${{ github.workspace }}/kernel_patches/ntsync/ntsync_base.patch" 2>&1; then
+          echo "✅ Applied ntsync_base.patch"
+        else
+          echo "❌ ERROR: Failed to apply ntsync_base.patch"
+          exit 1
+        fi
+
+        # Verify files were created
+        if [ ! -s "drivers/misc/ntsync.c" ]; then
+          echo "❌ ERROR: ntsync.c is empty or missing after patch"
+          exit 1
+        fi
+        if [ ! -s "include/uapi/linux/ntsync.h" ]; then
+          echo "❌ ERROR: ntsync.h is empty or missing after patch"
+          exit 1
+        fi
+
+        echo "✅ ntsync source files created successfully"
+
+    - name: Configure NTSYNC in Kconfig and Makefile
+      if: steps.check.outputs.in_tree == 'false'
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel/common
+      run: |
+        set -euo pipefail
+        set -x
+
+        # Add NTSYNC config to drivers/misc/Kconfig if not present
+        if ! grep -q '^config NTSYNC' drivers/misc/Kconfig; then
+          printf '\nconfig NTSYNC\n\ttristate "NT synchronization primitive emulation"\n\tdefault m\n\thelp\n\t  This module provides kernel support for emulation of Windows NT\n\t  synchronization primitives. It is not a hardware driver.\n\n\t  To compile this driver as a module, choose M here: the\n\t  module will be called ntsync.\n\n\t  If unsure, say N.\n' >> drivers/misc/Kconfig
+          echo "Added NTSYNC config to Kconfig"
+        else
+          echo "NTSYNC config already present in Kconfig"
+        fi
+
+        # Add NTSYNC entry to drivers/misc/Makefile if not present
+        if ! grep -q 'obj-$(CONFIG_NTSYNC)' drivers/misc/Makefile; then
+          # Append with a tab separation
+          printf '\nobj-$(CONFIG_NTSYNC)\t+= ntsync.o\n' >> drivers/misc/Makefile
+          echo "Added NTSYNC entry to Makefile"
+        else
+          echo "NTSYNC entry already present in Makefile"
+        fi
+
+    - name: Enable NTSYNC config
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel
+      run: |
+        cat >> "${{ github.workspace }}/wild_gki.fragment" << 'EOF'
+        # NTSYNC - Windows NT sync primitives for Wine/Droidspaces
+        CONFIG_NTSYNC=y
+        EOF

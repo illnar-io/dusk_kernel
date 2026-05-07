@@ -1,0 +1,90 @@
+name: Apply Phase 2 Patches
+description: "Apply Phase 2 DUSK Report patches: ZRAM multi-compression backport and other performance/security patches"
+inputs:
+  kernel_version:
+    description: "Kernel version (e.g., 6.1)"
+    required: true
+  android_version:
+    description: "Android version (e.g., android14)"
+    required: true
+  sublevel:
+    description: "Kernel sublevel number"
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Apply Ptrace Leak Fix
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel/common
+      run: |
+        set -euo pipefail
+        PATCH_DIR="${{ github.workspace }}/kernel_patches/ptrace"
+        if [ ! -d "$PATCH_DIR" ]; then
+          echo "::error::Ptrace patch directory not found: $PATCH_DIR"
+          exit 1
+        fi
+        for PATCH in $(ls "$PATCH_DIR"/*.patch | sort -V); do
+          echo "Applying patch: $(basename "$PATCH")"
+          if ! patch -p1 < "$PATCH"; then
+            echo "::error::Failed to apply patch: $PATCH"
+            exit 1
+          fi
+        done
+        echo "✅ Ptrace leak fix applied."
+
+    - name: Apply Unicode Bypass Fix
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel/common
+      run: |
+        set -euo pipefail
+        PATCH_DIR="${{ github.workspace }}/kernel_patches/unicode"
+        if [ ! -d "$PATCH_DIR" ]; then
+          echo "::error::Unicode bypass patch directory not found: $PATCH_DIR"
+          exit 1
+        fi
+        for PATCH in $(ls "$PATCH_DIR"/*.patch | sort -V); do
+          echo "Applying patch: $(basename "$PATCH")"
+          if ! patch -p1 < "$PATCH"; then
+            echo "::error::Failed to apply patch: $PATCH"
+            exit 1
+          fi
+        done
+        echo "✅ Unicode bypass fix applied."
+
+    - name: Apply F2FS Checkpoint RT Priority Patch
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel/common
+      run: |
+        set -euo pipefail
+        PATCH_DIR="${{ github.workspace }}/kernel_patches/f2fs"
+        if [ ! -d "$PATCH_DIR" ]; then
+          echo "::error::F2FS patch directory not found: $PATCH_DIR"
+          exit 1
+        fi
+        for PATCH in $(ls "$PATCH_DIR"/*.patch | sort -V); do
+          echo "Applying patch: $(basename "$PATCH")"
+          if ! patch -p1 < "$PATCH"; then
+            echo "::error::Failed to apply patch: $PATCH"
+            exit 1
+          fi
+        done
+        echo "✅ F2FS checkpoint RT priority applied."
+
+    - name: Apply ZRAM Multi-Compression Patches
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel/common
+      run: |
+        set -euo pipefail
+        PATCH_DIR="${{ github.workspace }}/kernel_patches/zram_multi_comp"
+        if [ ! -d "$PATCH_DIR" ]; then
+          echo "::error::ZRAM multi-compression patch directory not found: $PATCH_DIR"
+          exit 1
+        fi
+        for PATCH in $(ls "$PATCH_DIR"/*.patch | sort -V); do
+          echo "Applying patch: $(basename "$PATCH")"
+          if ! patch -p1 < "$PATCH"; then
+            echo "::error::Failed to apply patch: $PATCH"
+            exit 1
+          fi
+        done
+        echo "✅ All ZRAM multi-compression patches applied."

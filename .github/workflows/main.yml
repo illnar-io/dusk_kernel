@@ -32,17 +32,47 @@ on:
         description: "Feature Set"
         type: choice
         options:
+          
+          - KSUN+SUSFS+BBG+NET+DS+NTSYNC+P2
+          - KSUN+SUSFS+BBG+NET+DS+NTSYNC
+          - KSUN+SUSFS+BBG+NET+DS+P2
           - KSUN+SUSFS+BBG+NET+DS
+          - KSUN+SUSFS+BBG+NET+NTSYNC+P2
+          - KSUN+SUSFS+BBG+NET+NTSYNC
+          - KSUN+SUSFS+BBG+NET+P2
+          - KSUN+SUSFS+BBG+NET
+          - KSUN+SUSFS+BBG+DS+NTSYNC+P2
+          - KSUN+SUSFS+BBG+DS+NTSYNC
+          - KSUN+SUSFS+BBG+DS+P2
+          - KSUN+SUSFS+BBG+DS
+          - KSUN+SUSFS+BBG+NTSYNC+P2
+          - KSUN+SUSFS+BBG+NTSYNC
+          - KSUN+SUSFS+BBG+P2
           - KSUN+SUSFS+BBG
+          - KSUN+SUSFS+NET+DS+NTSYNC+P2
+          - KSUN+SUSFS+NET+DS+NTSYNC
+          - KSUN+SUSFS+NET+DS+P2
+          - KSUN+SUSFS+NET+DS
+          - KSUN+SUSFS+NET+NTSYNC+P2
+          - KSUN+SUSFS+NET+NTSYNC
+          - KSUN+SUSFS+NET+P2
           - KSUN+SUSFS+NET
+          - KSUN+SUSFS+DS+NTSYNC+P2
+          - KSUN+SUSFS+DS+NTSYNC
+          - KSUN+SUSFS+DS+P2
           - KSUN+SUSFS+DS
+          - KSUN+SUSFS+NTSYNC+P2
+          - KSUN+SUSFS+NTSYNC
+          - KSUN+SUSFS+P2
           - KSUN+SUSFS
           - KSUN+BBG
           - KSUN+NET
           - KSUN+DS
+          - KSUN+NTSYNC
           - KSUN
           - NONE
           - FULL
+
         default: FULL
       variant:
         description: "Build Variant"
@@ -51,7 +81,7 @@ on:
           - All
           - Normal
           - Bypass
-          - Wild
+          - DUSK
         default: Normal
       use_repo:
         description: "Use repo for downloading kernel source"

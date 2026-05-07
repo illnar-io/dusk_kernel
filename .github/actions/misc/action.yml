@@ -1,11 +1,11 @@
-name: 'Setup Misc Configs'
-description: 'Set up kernel configuration fragment with miscellaneous options'
+name: "Setup Misc Configs"
+description: "Set up kernel configuration fragment with miscellaneous options"
 inputs:
   kernel_version:
-    description: 'Kernel version (e.g., 6.1)'
+    description: "Kernel version (e.g., 6.1)"
     required: true
   android_version:
-    description: 'Android version (e.g., android14)'
+    description: "Android version (e.g., android14)"
     required: true
 
 runs:
@@ -24,21 +24,38 @@ runs:
         CONFIG_KALLSYMS=y
         CONFIG_KALLSYMS_ALL=y
 
-        EOF
         # CONFIG_TRIM_UNUSED_KSYMS is not set
-        # add this here for later
 
+        # User Namespaces (required for Droidspaces, containers, and ntsync)
+        CONFIG_USER_NS=y
 
-    - name: Add RUST build configs
-      shell: bash
-      if: ${{ inputs.kernel_version == '6.12' && false }}
-      run: |
-        set -euo pipefail
-        echo "Add Build based configs"
-        cat >> "${{ github.workspace }}/wild_gki.fragment" << 'EOF'
-        CONFIG_ANDROID_BINDER_IPC_RUST=m
-        CONFIG_CMDLINE="module_blacklist=rust_binder"
-        CONFIG_CMDLINE_EXTEND=y
-        CONFIG_CMDLINE_FORCE=n
-        CONFIG_RUST=y
+        # === Phase 1 — DUSK Kernel Report improvements ===
+
+        # MGLRU (Multi-Gen LRU) for better memory management on 6-8GB RAM
+        CONFIG_LRU_GEN=y
+        CONFIG_LRU_GEN_ENABLED=y
+
+        # ZRAM: built-in + zstd default (MULTI_COMP backported in phase2-patches)
+        CONFIG_ZRAM=y
+        # CONFIG_ZRAM_DEF_COMP_LZORLE is not set
+        CONFIG_ZRAM_DEF_COMP_ZSTD=y
+        CONFIG_ZRAM_DEF_COMP="zstd"
+
+        # RCU_LAZY: activate by default (was DEFAULT_OFF)
+        # CONFIG_RCU_LAZY_DEFAULT_OFF is not set
+
+        # EAS uclamp tuning for better task placement
+        CONFIG_UCLAMP_TASK=y
+
+        # F2FS GC tuning (aggressive on charge) — Phase2 DUSK Report
+        # Note: CONFIG_F2FS_GC_RECOVERY doesn't exist - it's SBI_IS_RECOVERED runtime flag
+        # Valid F2FS config options for 6.1:
+        CONFIG_F2FS_FS=y
+        CONFIG_F2FS_FS_COMPRESSION=y
+        CONFIG_F2FS_FS_LZ4=y
+        CONFIG_F2FS_FS_LZ4HC=y
+        CONFIG_F2FS_FS_ZSTD=y
+        CONFIG_F2FS_FS_LZO=y
+        CONFIG_F2FS_FS_LZORLE=y
+        CONFIG_F2FS_UNFAIR_RWSEM=y
         EOF
