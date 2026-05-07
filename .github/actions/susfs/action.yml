@@ -72,8 +72,19 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}/kernel/KernelSU-Next
       run: |
-        cp ${{ github.workspace }}/kernel_patches/wild/ksun-e6ba52b-susfs-v2.1.0-a14-6.1-e1c57040.patch ./
-        patch -p1 < ksun-e6ba52b-susfs-v2.1.0-a14-6.1-e1c57040.patch
+        PATCH_DIR="${{ github.workspace }}/kernel_patches/wild"
+        PATCH_NAME="ksun-e6ba52b-susfs-v2.1.0-a14-6.1-e1c57040.patch"
+        PATCH_PATH="${PATCH_DIR}/${PATCH_NAME}"
+
+        if [ ! -f "$PATCH_PATH" ]; then
+          mkdir -p "$PATCH_DIR"
+          echo "Downloading SUSFS-KSU patch from WildKernels..."
+          curl -LfsS --retry 3 --retry-delay 5 -o "$PATCH_PATH" \
+            "https://raw.githubusercontent.com/WildKernels/kernel_patches/main/wild/${PATCH_NAME}"
+        fi
+
+        cp "$PATCH_PATH" ./
+        patch -p1 < "$PATCH_NAME"
 
     - name: Apply Kernel SUSFS Patches
       shell: bash
