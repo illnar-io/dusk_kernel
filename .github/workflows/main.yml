@@ -14,7 +14,7 @@ on:
           - Action
           - Pre-Release
           - Release
-        default: Actions
+        default: Action
       kernel_build_version:
         description: "Kernel Version"
         type: choice
