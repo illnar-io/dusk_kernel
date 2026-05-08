@@ -65,25 +65,9 @@ runs:
       working-directory: ${{ github.workspace }}/kernel/common
       run: |
         set -euo pipefail
-        BASE_URL="https://raw.githubusercontent.com/ahmed-alnassif/GKI-Duchamp/master/kernel-patches/common"
-        TMPDIR=$(mktemp -d)
-        # Try re_write first (newer version), fall back to add if it fails
-        for VER in "re_write_limitation_scaling_min_freq" "add_limitation_scaling_min_freq"; do
-          PATCH="${VER}.patch"
-          echo "→ Trying ${PATCH}..."
-          if ! curl -sLf "${BASE_URL}/${PATCH}" -o "${TMPDIR}/${PATCH}"; then
-            echo "  ⚠ Failed to download ${PATCH}"
-            continue
-          fi
-          if ! patch -p1 --dry-run < "${TMPDIR}/${PATCH}" 2>/dev/null; then
-            echo "  ⚠ ${PATCH} already applied or conflicts, skipping"
-          else
-            patch -p1 < "${TMPDIR}/${PATCH}"
-            echo "  ✅ ${PATCH} applied"
-            break
-          fi
-        done
-        rm -rf "$TMPDIR"
+        # Scaling min freq patches reference Samsung/OnePlus-specific
+        # cpu_lp_mask/cpu_perf_mask not present in GKI common kernels.
+        echo "⚠ Skipping scaling_min_freq patches (GKI doesn't have cpu_lp_mask/cpu_perf_mask)"
 
     - name: Download and Apply BBRv3
       shell: bash
