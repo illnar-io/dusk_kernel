@@ -1,0 +1,23 @@
+name: 'Prepare DUSK Companion Module'
+description: 'Zips the KernelSU companion module for deployment'
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        set -euo pipefail
+
+        MODULE_SRC="${{ github.workspace }}/companion/module"
+        OUTPUT="${{ github.workspace }}/companion/dusk-companion-v1.0.zip"
+
+        if [ ! -d "$MODULE_SRC" ]; then
+          echo "::warning::Companion module source not found at $MODULE_SRC"
+          exit 0
+        fi
+
+        cd "$MODULE_SRC"
+        rm -f "$OUTPUT"
+        zip -r9 "$OUTPUT" . -x '*.git*'
+        echo "✅ DUSK Companion module created: $OUTPUT"
+        ls -lh "$OUTPUT"

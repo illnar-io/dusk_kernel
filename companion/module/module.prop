@@ -1,0 +1,6 @@
+id=dusk_companion
+name=DUSK Kernel Companion
+version=v1.0
+versionCode=1
+author=ILLnar
+description=Boot-time tunings for DUSK kernel: schedutil per-cluster, GPU governor, thermal policy, ZRAM recompression
