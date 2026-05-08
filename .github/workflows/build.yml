@@ -133,6 +133,12 @@ jobs:
         android_version: ${{ steps.parse.outputs.android_version }}
         sublevel: ${{ steps.extract.outputs.sublevel }}
 
+    - name: Duchamp Performance & Battery Patches
+      uses: ./.github/actions/duchamp-patches
+      with:
+        kernel_version: ${{ steps.parse.outputs.kernel_version }}
+        sublevel: ${{ steps.extract.outputs.sublevel }}
+
     - name: Apply Module Check Bypass
       if: ${{ inputs.variant == 'Bypass' }}
       uses: ./.github/actions/module-check-bypass
