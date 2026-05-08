@@ -54,7 +54,7 @@ runs:
           KSU_GIT_TAG="${KSU_GIT_TAG:-$(git describe --tags --abbrev=0 2>/dev/null || echo 'v0.0.1')}"
         elif [[ "$ROOT" == "ReSukiSU" ]] || [[ "$ROOT" == "RSKSU" ]]; then
           echo "  Cloning ReSukiSU..."
-          curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/refs/heads/main/kernel/setup.sh" | bash -s builtin
+          curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/refs/heads/main/kernel/setup.sh" | bash -s main
           cd KernelSU/kernel
           COMMITS_COUNT=$(/usr/bin/git rev-list --count HEAD 2>/dev/null || echo "0")
           BASE_VERSION=30000
