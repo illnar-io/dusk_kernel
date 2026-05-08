@@ -2,7 +2,7 @@ name: Setup Root Solution
 description: Download and configure the selected root solution (KernelSU-Next, KernelSU, SukiSU-Ultra, ReSukiSU)
 inputs:
   root:
-    description: "Root solution to install (KSUN, KSU, SKSU, RSKSU)"
+    description: "Root solution to install (KernelSU-Next, KernelSU, SukiSU-Ultra, ReSukiSU)"
     required: true
 
 runs:
@@ -13,64 +13,61 @@ runs:
       working-directory: ${{ github.workspace }}/kernel
       run: |
         set -euo pipefail
-        
+
         ROOT="${{ inputs.root }}"
         echo "→ Installing root solution: ${ROOT}"
-        
-        case "${ROOT}" in
-          KernelSU-Next|KSUN)
-            echo "  Cloning KernelSU-Next..."
-            curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/dev/kernel/setup.sh" | bash -s 2887ea49428bc3fb5184e7c35223f0a9a47ad100
-            cd KernelSU-Next/kernel
-            COMMITS_COUNT=$(/usr/bin/git rev-list --count HEAD)
-            BASE_VERSION=30000
-            KSU_VERSION=$(expr $COMMITS_COUNT "+" $BASE_VERSION)
-            sed -i "s/^KSU_VERSION_FALLBACK := 1$/KSU_VERSION_FALLBACK := ${KSU_VERSION}/" Kbuild
-            KSU_GIT_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.1")"
-            sed -i "s/^KSU_VERSION_TAG_FALLBACK := v0.0.1$/KSU_VERSION_TAG_FALLBACK := ${KSU_GIT_TAG}/" Kbuild
-            ;;
-            
-          KernelSU|KSU)
-            echo "  Cloning KernelSU..."
-            curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
-            cd KernelSU/kernel
-            COMMITS_COUNT=$(/usr/bin/git rev-list --count HEAD)
-            BASE_VERSION=30000
-            KSU_VERSION=$(expr $COMMITS_COUNT "+" $BASE_VERSION)
-            sed -i "s/^KSU_VERSION_FALLBACK := 1$/KSU_VERSION_FALLBACK := ${KSU_VERSION}/" Kbuild
-            KSU_GIT_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.1")"
-            sed -i "s/^KSU_VERSION_TAG_FALLBACK := v0.0.1$/KSU_VERSION_TAG_FALLBACK := ${KSU_GIT_TAG}/" Kbuild
-            ;;
-            
-          SukiSU-Ultra|SKSU)
-            echo "  Cloning SukiSU-Ultra..."
-            curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/builtin/kernel/setup.sh" | bash -s builtin
-            cd KernelSU/kernel
-            COMMITS_COUNT=$(/usr/bin/git rev-list --count HEAD)
-            BASE_VERSION=30000
-            KSU_VERSION=$(expr $COMMITS_COUNT "+" $BASE_VERSION)
-            sed -i "s/^KSU_VERSION_FALLBACK := 1$/KSU_VERSION_FALLBACK := ${KSU_VERSION}/" Kbuild
-            KSU_GIT_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.1")"
-            sed -i "s/^KSU_VERSION_TAG_FALLBACK := v0.0.1$/KSU_VERSION_TAG_FALLBACK := ${KSU_GIT_TAG}/" Kbuild
-            ;;
-            
-          ReSukiSU|RSKSU)
-            echo "  Cloning ReSukiSU..."
-            curl -LSs "https://raw.githubusercontent.com/KOWX712/KernelSU_ReSukiSU/main/kernel/setup.sh" | bash -s main
-            cd KernelSU/kernel
-            COMMITS_COUNT=$(/usr/bin/git rev-list --count HEAD)
-            BASE_VERSION=30000
-            KSU_VERSION=$(expr $COMMITS_COUNT "+" $BASE_VERSION)
-            sed -i "s/^KSU_VERSION_FALLBACK := 1$/KSU_VERSION_FALLBACK := ${KSU_VERSION}/" Kbuild
-            KSU_GIT_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.1")"
-            sed -i "s/^KSU_VERSION_TAG_FALLBACK := v0.0.1$/KSU_VERSION_TAG_FALLBACK := ${KSU_GIT_TAG}/" Kbuild
-            ;;
-            
-          *)
-            echo "::error::Unknown root solution: ${ROOT}"
-            exit 1
-            ;;
-        esac
+
+        if [[ "$ROOT" == "KernelSU-Next" ]] || [[ "$ROOT" == "KSUN" ]]; then
+          echo "  Cloning KernelSU-Next..."
+          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/dev/kernel/setup.sh" | bash -s 2887ea49428bc3fb5184e7c35223f0a9a47ad100
+          cd KernelSU-Next/kernel
+          COMMITS_COUNT=$(/usr/bin/git rev-list --count HEAD)
+          BASE_VERSION=30000
+          KSU_VERSION=$(expr $COMMITS_COUNT "+" $BASE_VERSION)
+          sed -i "s/^KSU_VERSION_FALLBACK := 1$/KSU_VERSION_FALLBACK := ${KSU_VERSION}/" Kbuild
+          KSU_GIT_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.1")"
+          sed -i "s/^KSU_VERSION_TAG_FALLBACK := v0.0.1$/KSU_VERSION_TAG_FALLBACK := ${KSU_GIT_TAG}/" Kbuild
+        elif [[ "$ROOT" == "KernelSU" ]] || [[ "$ROOT" == "KSU" ]]; then
+          echo "  Cloning KernelSU..."
+          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
+          cd KernelSU/kernel
+          COMMITS_COUNT=$(/usr/bin/git rev-list --count HEAD)
+          BASE_VERSION=30000
+          KSU_VERSION=$(expr $COMMITS_COUNT "+" $BASE_VERSION)
+          sed -i "s/^KSU_VERSION_FALLBACK := 1$/KSU_VERSION_FALLBACK := ${KSU_VERSION}/" Kbuild
+          KSU_GIT_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.1")"
+          sed -i "s/^KSU_VERSION_TAG_FALLBACK := v0.0.1$/KSU_VERSION_TAG_FALLBACK := ${KSU_GIT_TAG}/" Kbuild
+        elif [[ "$ROOT" == "SukiSU-Ultra" ]] || [[ "$ROOT" == "SKSU" ]]; then
+          echo "  Cloning SukiSU-Ultra..."
+          curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/builtin/kernel/setup.sh" | bash -s builtin
+          cd KernelSU/kernel
+          COMMITS_COUNT=$(/usr/bin/git rev-list --count HEAD)
+          BASE_VERSION=30000
+          KSU_VERSION=$(expr $COMMITS_COUNT "+" $BASE_VERSION)
+          sed -i "s/^KSU_VERSION_FALLBACK := 1$/KSU_VERSION_FALLBACK := ${KSU_VERSION}/" Kbuild
+          KSU_GIT_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.1")"
+          sed -i "s/^KSU_VERSION_TAG_FALLBACK := v0.0.1$/KSU_VERSION_TAG_FALLBACK := ${KSU_GIT_TAG}/" Kbuild
+        elif [[ "$ROOT" == "ReSukiSU" ]] || [[ "$ROOT" == "RSKSU" ]]; then
+          echo "  Cloning ReSukiSU..."
+          curl -LSs "https://raw.githubusercontent.com/KOWX712/KernelSU_ReSukiSU/main/kernel/setup.sh" | bash -s main
+          cd KernelSU/kernel
+          COMMITS_COUNT=$(/usr/bin/git rev-list --count HEAD)
+          BASE_VERSION=30000
+          KSU_VERSION=$(expr $COMMITS_COUNT "+" $BASE_VERSION)
+          sed -i "s/^KSU_VERSION_FALLBACK := 1$/KSU_VERSION_FALLBACK := ${KSU_VERSION}/" Kbuild
+          KSU_GIT_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.1")"
+          sed -i "s/^KSU_VERSION_TAG_FALLBACK := v0.0.1$/KSU_VERSION_TAG_FALLBACK := ${KSU_GIT_TAG}/" Kbuild
+        else
+          echo "::error::Unknown root solution: ${ROOT}"
+          exit 1
+        fi
+
+        # Save KSU directory name for later steps
+        if [[ "$ROOT" == "KernelSU-Next" ]] || [[ "$ROOT" == "KSUN" ]]; then
+          echo "KSU_DIR=KernelSU-Next" >> $GITHUB_ENV
+        else
+          echo "KSU_DIR=KernelSU" >> $GITHUB_ENV
+        fi
 
     - name: Enable KernelSU Config
       shell: bash
@@ -83,17 +80,19 @@ runs:
 
     - name: Extract Root Version Info
       shell: bash
-      working-directory: ${{ github.workspace }}/kernel/KernelSU
       run: |
         set -euo pipefail
-        if [ -d "${{ github.workspace }}/kernel/KernelSU-Next" ]; then
-          cd "${{ github.workspace }}/kernel/KernelSU-Next"
+        KSU_DIR="${KSU_DIR:-KernelSU}"
+        KSU_PATH="${{ github.workspace }}/kernel/${KSU_DIR}"
+        if [ -d "$KSU_PATH" ]; then
+          cd "$KSU_PATH"
+          KSU_GIT_VERSION=$(git rev-list --count HEAD 2>/dev/null)
+          KSU_GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
+          KSU_COMMIT=$(git rev-parse --short HEAD 2>/dev/null)
+          KSU_VERSION=$((30000 + KSU_GIT_VERSION))
+          echo "KSU_GIT_TAG=$KSU_GIT_TAG" >> $GITHUB_ENV
+          echo "KSU_VERSION=$KSU_VERSION" >> $GITHUB_ENV
+          echo "KSU_COMMIT=$KSU_COMMIT" >> $GITHUB_ENV
+        else
+          echo "⚠ KSU directory not found: $KSU_PATH"
         fi
-        KSU_GIT_VERSION=$(git rev-list --count HEAD 2>/dev/null)
-        KSU_GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
-        KSU_COMMIT=$(git rev-parse --short HEAD 2>/dev/null)
-        KSU_VERSION=$((30000 + KSU_GIT_VERSION))
-        
-        echo "KSU_GIT_TAG=$KSU_GIT_TAG" >> $GITHUB_ENV
-        echo "KSU_VERSION=$KSU_VERSION" >> $GITHUB_ENV
-        echo "KSU_COMMIT=$KSU_COMMIT" >> $GITHUB_ENV

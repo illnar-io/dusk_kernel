@@ -73,14 +73,10 @@ runs:
       working-directory: ${{ github.workspace }}/kernel
       run: |
         set -euo pipefail
-        # Detect KSU directory (KernelSU-Next or KernelSU)
-        KSU_DIR=""
-        if [ -d "KernelSU-Next" ]; then
-          KSU_DIR="KernelSU-Next"
-        elif [ -d "KernelSU" ]; then
-          KSU_DIR="KernelSU"
-        else
-          echo "⚠ No KSU directory found, skipping SUSFS KSU patch"
+        KSU_DIR="${KSU_DIR:-KernelSU}"
+        echo "  Using KSU directory: ${KSU_DIR}"
+        if [ ! -d "${KSU_DIR}" ]; then
+          echo "⚠ KSU directory ${KSU_DIR} not found, skipping SUSFS KSU patch"
           exit 0
         fi
         cd "${KSU_DIR}"
