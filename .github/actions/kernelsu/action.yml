@@ -81,7 +81,6 @@ runs:
 
     - name: Enable KernelSU Config
       shell: bash
-      working-directory: ${{ github.workspace }}/kernel
       run: |
         cat >> "${{ github.workspace }}/wild_gki.fragment" << 'EOF'
         # KernelSU Configuration
@@ -93,16 +92,20 @@ runs:
       run: |
         set -euo pipefail
         KSU_DIR="${KSU_DIR:-KernelSU}"
+        # Some forks (SukiSU-Ultra) clone to workspace root, others to kernel/
         KSU_PATH="${{ github.workspace }}/kernel/${KSU_DIR}"
+        if [ ! -d "$KSU_PATH" ]; then
+          KSU_PATH="${{ github.workspace }}/${KSU_DIR}"
+        fi
         if [ -d "$KSU_PATH" ]; then
           cd "$KSU_PATH"
-          KSU_GIT_VERSION=$(git rev-list --count HEAD 2>/dev/null)
-          KSU_GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
-          KSU_COMMIT=$(git rev-parse --short HEAD 2>/dev/null)
+          KSU_GIT_VERSION=$(git rev-list --count HEAD 2>/dev/null || echo "0")
+          KSU_GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.1")
+          KSU_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
           KSU_VERSION=$((30000 + KSU_GIT_VERSION))
           echo "KSU_GIT_TAG=$KSU_GIT_TAG" >> $GITHUB_ENV
           echo "KSU_VERSION=$KSU_VERSION" >> $GITHUB_ENV
           echo "KSU_COMMIT=$KSU_COMMIT" >> $GITHUB_ENV
         else
-          echo "⚠ KSU directory not found: $KSU_PATH"
+          echo "⚠ KSU directory not found in kernel/ or workspace root: ${KSU_DIR}"
         fi
