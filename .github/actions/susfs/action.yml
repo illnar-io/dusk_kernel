@@ -70,21 +70,55 @@ runs:
 
     - name: Apply KSU SUSFS Patches
       shell: bash
-      working-directory: ${{ github.workspace }}/kernel/KernelSU-Next
+      working-directory: ${{ github.workspace }}/kernel
       run: |
-        PATCH_DIR="${{ github.workspace }}/kernel_patches/wild"
-        PATCH_NAME="ksun-e6ba52b-susfs-v2.1.0-a14-6.1-e1c57040.patch"
-        PATCH_PATH="${PATCH_DIR}/${PATCH_NAME}"
-
-        if [ ! -f "$PATCH_PATH" ]; then
-          mkdir -p "$PATCH_DIR"
-          echo "Downloading SUSFS-KSU patch from WildKernels..."
-          curl -LfsS --retry 3 --retry-delay 5 -o "$PATCH_PATH" \
-            "https://raw.githubusercontent.com/WildKernels/kernel_patches/main/wild/${PATCH_NAME}"
+        set -euo pipefail
+        # Detect KSU directory (KernelSU-Next or KernelSU)
+        KSU_DIR=""
+        if [ -d "KernelSU-Next" ]; then
+          KSU_DIR="KernelSU-Next"
+        elif [ -d "KernelSU" ]; then
+          KSU_DIR="KernelSU"
+        else
+          echo "⚠ No KSU directory found, skipping SUSFS KSU patch"
+          exit 0
         fi
+        cd "${KSU_DIR}"
 
-        cp "$PATCH_PATH" ./
-        patch -p1 < "$PATCH_NAME"
+        PATCH_DIR="${{ github.workspace }}/kernel_patches/wild"
+        mkdir -p "$PATCH_DIR"
+
+        # Try KernelSU-Next SUSFS patch first, fallback to KernelSU
+        PATCH_NAMES=(
+          "ksun-e6ba52b-susfs-v2.1.0-a14-6.1-e1c57040.patch"
+          "ksu-susfs-v2.1.0.patch"
+        )
+        APPLIED=false
+        for PATCH_NAME in "${PATCH_NAMES[@]}"; do
+          PATCH_PATH="${PATCH_DIR}/${PATCH_NAME}"
+          if [ ! -f "$PATCH_PATH" ]; then
+            echo "Downloading ${PATCH_NAME}..."
+            if curl -LfsS --retry 3 --retry-delay 5 -o "$PATCH_PATH" \
+              "https://raw.githubusercontent.com/WildKernels/kernel_patches/main/wild/${PATCH_NAME}" 2>/dev/null; then
+              echo "  Downloaded"
+            else
+              echo "  ⚠ Not available, skipping"
+              continue
+            fi
+          fi
+          if patch -p1 --dry-run < "$PATCH_PATH" 2>/dev/null; then
+            patch -p1 < "$PATCH_PATH"
+            echo "✅ ${PATCH_NAME} applied"
+            APPLIED=true
+            break
+          else
+            echo "⚠ ${PATCH_NAME} doesn't apply, trying next"
+          fi
+        done
+
+        if [ "$APPLIED" = false ]; then
+          echo "⚠ No SUSFS KSU patch applied - may need manual compat patch for this fork"
+        fi
 
     - name: Apply Kernel SUSFS Patches
       shell: bash

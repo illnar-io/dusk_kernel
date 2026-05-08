@@ -7,6 +7,10 @@ inputs:
   android_version:
     description: "Android version (e.g., android14)"
     required: true
+  ksu_compat:
+    description: "KSU compat mode - keep debug enabled"
+    required: false
+    default: "false"
 
 runs:
   using: "composite"
@@ -121,8 +125,13 @@ runs:
         CONFIG_IP6_NF_TARGET_HL=y
         CONFIG_IP6_NF_MATCH_HL=y
 
+        EOF
+        # Disable heavy debug for performance (skip in compat mode)
+        if [ "${{ inputs.ksu_compat }}" != "true" ]; then
+          cat >> "${{ github.workspace }}/wild_gki.fragment" << 'EOF2'
         # Disable heavy debug for performance
         CONFIG_UBSAN=n
         CONFIG_PAGE_OWNER=n
         CONFIG_RCU_TRACE=n
-        EOF
+        EOF2
+        fi

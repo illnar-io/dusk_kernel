@@ -7,14 +7,26 @@ on:
         description: "Path to the JSON config file"
         required: true
         type: string
-      feature_set:
-        description: "Feature Set"
+      root:
+        description: "Root solution (None, KernelSU-Next, KernelSU, SukiSU-Ultra, ReSukiSU)"
         required: false
         type: string
+        default: KernelSU-Next
+      susfs:
+        description: "Include SUSFS"
+        required: false
+        type: boolean
+        default: true
+      ksu_compat:
+        description: "KSU compat mode"
+        required: false
+        type: boolean
+        default: false
       variant:
-        description: "Build Variant (All, Normal, Bypass, Wild)"
+        description: "Build Variant (Normal, Bypass, DUSK)"
         required: false
         type: string
+        default: Normal
       use_repo:
         description: "Use repo for downloading kernel source"
         required: false
@@ -43,7 +55,7 @@ jobs:
 
           # Build the variant list as a JSON array
           if [ "${{ inputs.variant }}" = "All" ] || [ -z "${{ inputs.variant }}" ]; then
-            VARIANTS='["Normal","Bypass","Wild"]'
+            VARIANTS='["Normal","Bypass"]'
           else
             VARIANTS=$(jq -cn --arg v "${{ inputs.variant }}" '[$v]')
           fi
@@ -70,7 +82,9 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       kernel_version: ${{ matrix.kernel_version }}
+      root: ${{ inputs.root }}
+      susfs: ${{ inputs.susfs }}
+      ksu_compat: ${{ inputs.ksu_compat }}
       variant: ${{ inputs.variant }}
-      feature_set: ${{ inputs.feature_set }}
       use_repo: ${{ inputs.use_repo }}
     secrets: inherit
