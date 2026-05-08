@@ -20,6 +20,16 @@ runs:
         if [ -d "${{ github.workspace }}/AnyKernel3" ]; then rm -rf "${{ github.workspace }}/AnyKernel3"; fi
         git clone https://github.com/WildKernels/AnyKernel3.git -b gki-2.0 "${{ github.workspace }}/AnyKernel3"
 
+        # Apply DUSK branding (banner + anykernel.sh)
+        if [ -f "${{ github.workspace }}/.github/branding/banner" ]; then
+          cp "${{ github.workspace }}/.github/branding/banner" "${{ github.workspace }}/AnyKernel3/banner"
+          echo "Applied custom DUSK banner"
+        fi
+        if [ -f "${{ github.workspace }}/.github/branding/anykernel.sh" ]; then
+          cp "${{ github.workspace }}/.github/branding/anykernel.sh" "${{ github.workspace }}/AnyKernel3/anykernel.sh"
+          echo "Applied custom DUSK anykernel.sh"
+        fi
+
         AOSP_MIRROR=https://android.googlesource.com
         BRANCH=main-kernel-2025
         git clone $AOSP_MIRROR/kernel/prebuilts/build-tools -b $BRANCH --depth 1 kernel-build-tools
