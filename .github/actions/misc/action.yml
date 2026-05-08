@@ -128,9 +128,5 @@ runs:
         add_cfg "CONFIG_IP6_NF_TARGET_HL=y"
         add_cfg "CONFIG_IP6_NF_MATCH_HL=y"
 
-        # Disable heavy debug for performance (skip in compat mode)
-        if [ "${{ inputs.ksu_compat }}" != "true" ]; then
-          add_cfg "CONFIG_UBSAN=n"
-          add_cfg "CONFIG_PAGE_OWNER=n"
-          add_cfg "CONFIG_RCU_TRACE=n"
-        fi
+        # Note: disabling debug via =n is incompatible with GKI config checker
+        # when dependencies aren't met. These default to n in production builds.
