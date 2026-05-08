@@ -18,6 +18,13 @@ runs:
           sed -i 's/-dirty//' common/scripts/setlocalversion
         fi
 
+        # Deduplicate wild_gki.fragment (multiple actions append same configs)
+        FRAGMENT="${{ github.workspace }}/wild_gki.fragment"
+        if [ -f "$FRAGMENT" ]; then
+          sort -u -o "$FRAGMENT" "$FRAGMENT"
+          echo "✓ Deduplicated wild_gki.fragment"
+        fi
+
         # Commit changes to avoid dirty state during build
         cd ${{ github.workspace }}/kernel/common
         git config --global user.name "github-actions[bot]"
