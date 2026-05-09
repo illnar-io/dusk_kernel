@@ -72,7 +72,6 @@ runs:
         echo "✅ Applied $(basename $PATCH)"
 
     - name: Configure NTSYNC in Kconfig and Makefile
-      if: steps.check.outputs.in_tree == 'false'
       shell: bash
       working-directory: ${{ github.workspace }}/kernel/common
       run: |
@@ -104,7 +103,12 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}/kernel
       run: |
-        cat >> "${{ github.workspace }}/wild_gki.fragment" << 'EOF'
-        # NTSYNC - Windows NT sync primitives for Wine/Droidspaces
-        CONFIG_NTSYNC=y
-        EOF
+        KERNEL_COMMON="${{ github.workspace }}/kernel/common"
+        if grep -rq "config NTSYNC\b" "$KERNEL_COMMON" 2>/dev/null; then
+          cat >> "${{ github.workspace }}/wild_gki.fragment" << 'EOF'
+          # NTSYNC - Windows NT sync primitives for Wine/Droidspaces
+          CONFIG_NTSYNC=y
+          EOF
+        else
+          echo "⚠ CONFIG_NTSYNC Kconfig not found in kernel tree, skipping" >&2
+        fi

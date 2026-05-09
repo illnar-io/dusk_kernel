@@ -50,8 +50,6 @@ runs:
         CONFIG_KALLSYMS=y
         CONFIG_KALLSYMS_ALL=y
 
-        # CONFIG_TRIM_UNUSED_KSYMS is not set
-
         # User Namespaces (required for Droidspaces, containers, and ntsync)
         CONFIG_USER_NS=y
 
@@ -85,6 +83,11 @@ runs:
         CONFIG_F2FS_FS_LZORLE=y
         CONFIG_F2FS_UNFAIR_RWSEM=y
         EOF
+
+        # Trim unused symbols - disable only if GKI allows it
+        if ! grep -q "CONFIG_TRIM_UNUSED_KSYMS=y" "$KERNEL_COMMON/arch/arm64/configs/gki_defconfig" 2>/dev/null; then
+          echo '# CONFIG_TRIM_UNUSED_KSYMS is not set' >> "$FRAGMENT"
+        fi
 
         # === Duchamp Performance Tuning ===
         # Add with Kconfig existence checks
