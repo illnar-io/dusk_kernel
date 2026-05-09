@@ -87,7 +87,7 @@ runs:
         echo "=== ccache config ==="
         echo "====================="
         ccache -p
-        echo "=====================
+        echo "====================="
 
         echo "✅ ccache ready"
         echo "CCACHE_DIR: $CCACHE_DIR"

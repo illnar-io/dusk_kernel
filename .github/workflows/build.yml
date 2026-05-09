@@ -205,7 +205,6 @@ jobs:
       with:
         android_version: ${{ steps.parse.outputs.android_version }}
         kernel_version: ${{ steps.parse.outputs.kernel_version }}
-        os_patch_level: ${{ steps.parse.outputs.os_patch_level }}
         sublevel: ${{ steps.extract.outputs.sublevel }}
 
     - name: Restore build caches (ccache, bazel, bazel-disk, lto)
