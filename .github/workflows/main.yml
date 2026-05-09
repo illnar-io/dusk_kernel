@@ -33,7 +33,6 @@ on:
         type: choice
         options:
           - KernelSU-Next
-          - KernelSU
           - SukiSU-Ultra
           - ReSukiSU
         default: KernelSU-Next
@@ -398,8 +397,6 @@ jobs:
           echo "- Kernel Flasher: https://github.com/fatalcoder524/KernelFlasher/"
           if [[ "$ROOT" == "KernelSU-Next" ]]; then
             echo "- KernelSU-Next Manager: https://github.com/KernelSU-Next/KernelSU-Next"
-          elif [[ "$ROOT" == "KernelSU" ]]; then
-            echo "- KernelSU Manager: https://github.com/tiann/KernelSU"
           elif [[ "$ROOT" == "SukiSU-Ultra" ]]; then
             echo "- SukiSU Manager: https://github.com/SukiSU-Ultra/SukiSU-Ultra"
           elif [[ "$ROOT" == "ReSukiSU" ]]; then

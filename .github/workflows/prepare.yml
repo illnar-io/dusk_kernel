@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       root:
-        description: "Root solution (KernelSU-Next, KernelSU, SukiSU-Ultra, ReSukiSU)"
+        description: "Root solution (KernelSU-Next, SukiSU-Ultra, ReSukiSU)"
         required: false
         type: string
         default: KernelSU-Next

@@ -1,8 +1,8 @@
 name: Setup Root Solution
-description: Download and configure the selected root solution (KernelSU-Next, KernelSU, SukiSU-Ultra, ReSukiSU)
+description: Download and configure the selected root solution (KernelSU-Next, SukiSU-Ultra, ReSukiSU)
 inputs:
   root:
-    description: "Root solution to install (KernelSU-Next, KernelSU, SukiSU-Ultra, ReSukiSU)"
+    description: "Root solution to install (KernelSU-Next, SukiSU-Ultra, ReSukiSU)"
     required: true
 
 runs:
@@ -21,16 +21,6 @@ runs:
           echo "  Cloning KernelSU-Next..."
           curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/dev/kernel/setup.sh" | bash -s 2887ea49428bc3fb5184e7c35223f0a9a47ad100
           cd KernelSU-Next/kernel
-          COMMITS_COUNT=$(/usr/bin/git rev-list --count HEAD)
-          BASE_VERSION=30000
-          KSU_VERSION=$(expr $COMMITS_COUNT "+" $BASE_VERSION)
-          sed -i "s/^KSU_VERSION_FALLBACK := 1$/KSU_VERSION_FALLBACK := ${KSU_VERSION}/" Kbuild
-          KSU_GIT_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.1")"
-          sed -i "s/^KSU_VERSION_TAG_FALLBACK := v0.0.1$/KSU_VERSION_TAG_FALLBACK := ${KSU_GIT_TAG}/" Kbuild
-        elif [[ "$ROOT" == "KernelSU" ]] || [[ "$ROOT" == "KSU" ]]; then
-          echo "  Cloning KernelSU..."
-          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
-          cd KernelSU/kernel
           COMMITS_COUNT=$(/usr/bin/git rev-list --count HEAD)
           BASE_VERSION=30000
           KSU_VERSION=$(expr $COMMITS_COUNT "+" $BASE_VERSION)
