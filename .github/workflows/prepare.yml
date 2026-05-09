@@ -78,6 +78,7 @@ jobs:
     needs: generate-matrix
     strategy:
       fail-fast: false
+      max-parallel: 8
       matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
     uses: ./.github/workflows/build.yml
     with:

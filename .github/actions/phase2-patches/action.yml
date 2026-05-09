@@ -79,10 +79,11 @@ runs:
       run: |
         set -euo pipefail
         # Skip ZRAM multi-compression patches for kernels that already have it built-in
-        # GKI android14-6.1 sublevel 157+ has multi-compression via combs[]
+        # GKI android14-5.15 and android14-6.1 sublevel 157+ have multi-compression via combs[]
         if [[ "${{ inputs.kernel_version }}" == "6.1" && "${{ inputs.sublevel }}" -ge 157 ]] || \
            [[ "${{ inputs.kernel_version }}" == "6.6" ]] || \
-           [[ "${{ inputs.kernel_version }}" == "6.12" ]]; then
+           [[ "${{ inputs.kernel_version }}" == "6.12" ]] || \
+           [[ "${{ inputs.android_version }}" == "android14" && "${{ inputs.kernel_version }}" == "5.15" ]]; then
           echo "⚠ Kernel ${{ inputs.kernel_version }}.${{ inputs.sublevel }} already has multi-compression support, skipping ZRAM patches"
           exit 0
         fi
