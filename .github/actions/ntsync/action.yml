@@ -105,10 +105,8 @@ runs:
       run: |
         KERNEL_COMMON="${{ github.workspace }}/kernel/common"
         if grep -rq "config NTSYNC\b" "$KERNEL_COMMON" 2>/dev/null; then
-          cat >> "${{ github.workspace }}/wild_gki.fragment" << 'EOF'
-          # NTSYNC - Windows NT sync primitives for Wine/Droidspaces
-          CONFIG_NTSYNC=y
-          EOF
+          echo '# NTSYNC - Windows NT sync primitives for Wine/Droidspaces' >> "${{ github.workspace }}/wild_gki.fragment"
+          echo 'CONFIG_NTSYNC=y' >> "${{ github.workspace }}/wild_gki.fragment"
         else
           echo "⚠ CONFIG_NTSYNC Kconfig not found in kernel tree, skipping" >&2
         fi
