@@ -237,10 +237,13 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}/kernel/common
       run: |
-        # Check if SUSFS 50_add functions already exist in kernel source
-        # (skip patch to avoid redefinition errors)
+        # Check if SUSFS 50_add functions already exist in kernel source (stock
+        # .c definitions or KSU hooks static inline in headers). If KSU hooks
+        # have already made these functions static inline in the header, the
+        # 50_add patch would cause redefinition errors and should be skipped.
         if grep -q "unshare_userns\|make_kuid\|msg_init_ns" kernel/user_namespace.c 2>/dev/null || \
-           grep -q "unshare_userns\|make_kuid\|msg_init_ns" ipc/msg.c 2>/dev/null; then
+           grep -q "unshare_userns\|make_kuid\|msg_init_ns" ipc/msg.c 2>/dev/null || \
+           grep -q "static inline.*create_user_ns\|static inline.*msg_init_ns" include/linux/user_namespace.h 2>/dev/null; then
           echo "⚠ SUSFS 50_add functions already present in kernel, skipping 50_add patch"
         else
           patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
