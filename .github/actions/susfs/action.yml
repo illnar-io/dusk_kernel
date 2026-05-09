@@ -95,22 +95,35 @@ runs:
           fi
         done
 
-        if [ "$APPLIED" = true ]; then
-          cat >> "$FRAGMENT" << 'FRAGEOF'
-        # KernelSU SUSFS Configuration
-        CONFIG_KSU_SUSFS=y
-        CONFIG_KSU_SUSFS_SUS_PATH=y
-        CONFIG_KSU_SUSFS_SUS_MOUNT=y
-        CONFIG_KSU_SUSFS_SUS_KSTAT=y
-        CONFIG_KSU_SUSFS_SPOOF_UNAME=y
-        CONFIG_KSU_SUSFS_ENABLE_LOG=y
-        CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y
-        CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y
-        CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
-        CONFIG_KSU_SUSFS_SUS_MAP=y
-        FRAGEOF
+        # Always try to add SUSFS config entries with Kconfig existence check.
+        # This handles KSUN (KSU patch provides Kconfig), RSKSU (50_add patch
+        # provides Kconfig), and gracefully skips for KSU vanilla (no Kconfig).
+        KERNEL_COMMON="${{ github.workspace }}/kernel/common"
+        SUSFS_OPTIONS="KSU_SUSFS KSU_SUSFS_SUS_PATH KSU_SUSFS_SUS_MOUNT KSU_SUSFS_SUS_KSTAT KSU_SUSFS_SPOOF_UNAME KSU_SUSFS_ENABLE_LOG KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG KSU_SUSFS_OPEN_REDIRECT KSU_SUSFS_SUS_MAP"
+        FOUND=0
+        for OPT in $SUSFS_OPTIONS; do
+          if grep -rq "config ${OPT}\b" "$KERNEL_COMMON" 2>/dev/null; then
+            FOUND=$((FOUND + 1))
+          fi
+        done
+        if [ "$FOUND" -gt 0 ]; then
+          {
+            echo ""
+            echo "# KernelSU SUSFS Configuration"
+            echo "CONFIG_KSU_SUSFS=y"
+            echo "CONFIG_KSU_SUSFS_SUS_PATH=y"
+            echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y"
+            echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y"
+            echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y"
+            echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y"
+            echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y"
+            echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y"
+            echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y"
+            echo "CONFIG_KSU_SUSFS_SUS_MAP=y"
+          } >> "$FRAGMENT"
+          echo "✅ SUSFS config entries added (Kconfig found for $FOUND options)"
         else
-          echo "⚠ No SUSFS KSU patch applied - SUSFS features unavailable for this fork"
+          echo "⚠ SUSFS Kconfig not found in tree - SUSFS features unavailable"
         fi
 
     - name: Apply Kernel SUSFS Patches
