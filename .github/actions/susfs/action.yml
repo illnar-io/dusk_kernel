@@ -237,7 +237,14 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}/kernel/common
       run: |
-        patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
+        # Check if SUSFS 50_add functions already exist in kernel source
+        # (skip patch to avoid redefinition errors)
+        if grep -q "unshare_userns\|make_kuid\|msg_init_ns" kernel/user_namespace.c 2>/dev/null || \
+           grep -q "unshare_userns\|make_kuid\|msg_init_ns" ipc/msg.c 2>/dev/null; then
+          echo "⚠ SUSFS 50_add functions already present in kernel, skipping 50_add patch"
+        else
+          patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
+        fi
 
     - name: Revert Android 12 5.10 Fake Patches
       shell: bash
