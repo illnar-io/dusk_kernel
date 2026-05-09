@@ -90,13 +90,13 @@ jobs:
         os_patch_level: ${{ steps.parse.outputs.os_patch_level }}
 
     - name: Setup Root Solution
-      if: inputs.root != 'None'
+      if: true
       uses: ./.github/actions/kernelsu
       with:
         root: ${{ inputs.root }}
 
     - name: SUSFS
-      if: inputs.susfs && inputs.root != 'None'
+      if: inputs.susfs
       uses: ./.github/actions/susfs
       with:
         android_version: ${{ steps.parse.outputs.android_version }}

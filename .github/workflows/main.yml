@@ -32,14 +32,13 @@ on:
         description: "Root solution"
         type: choice
         options:
-          - None
           - KernelSU-Next
           - KernelSU
           - SukiSU-Ultra
           - ReSukiSU
         default: KernelSU-Next
       susfs:
-        description: "Include SUSFS (requires root != None)"
+        description: "Include SUSFS"
         type: boolean
         default: true
       ksu_compat:
