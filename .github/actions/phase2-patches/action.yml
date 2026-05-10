@@ -25,11 +25,11 @@ runs:
         fi
         for PATCH in $(ls "$PATCH_DIR"/*.patch | sort -V); do
           echo "Applying patch: $(basename "$PATCH")"
-          if ! patch -p1 --dry-run < "$PATCH" 2>/dev/null; then
-            echo "⚠ $(basename "$PATCH") already applied upstream, skipping"
-          else
+          if patch -p1 --dry-run < "$PATCH" 2>/dev/null; then
             patch -p1 < "$PATCH"
             echo "✅ $(basename "$PATCH") applied."
+          else
+            echo "⚠ $(basename "$PATCH") incompatible or already applied, skipping"
           fi
         done
 
@@ -45,11 +45,11 @@ runs:
         fi
         for PATCH in $(ls "$PATCH_DIR"/*.patch | sort -V); do
           echo "Applying patch: $(basename "$PATCH")"
-          if ! patch -p1 --dry-run < "$PATCH" 2>/dev/null; then
-            echo "⚠ $(basename "$PATCH") already applied upstream, skipping"
-          else
+          if patch -p1 --dry-run < "$PATCH" 2>/dev/null; then
             patch -p1 < "$PATCH"
             echo "✅ $(basename "$PATCH") applied."
+          else
+            echo "⚠ $(basename "$PATCH") incompatible or already applied, skipping"
           fi
         done
 
@@ -65,11 +65,11 @@ runs:
         fi
         for PATCH in $(ls "$PATCH_DIR"/*.patch | sort -V); do
           echo "Applying patch: $(basename "$PATCH")"
-          if ! patch -p1 --dry-run < "$PATCH" 2>/dev/null; then
-            echo "⚠ $(basename "$PATCH") already applied upstream, skipping"
-          else
+          if patch -p1 --dry-run < "$PATCH" 2>/dev/null; then
             patch -p1 < "$PATCH"
             echo "✅ $(basename "$PATCH") applied."
+          else
+            echo "⚠ $(basename "$PATCH") incompatible or already applied, skipping"
           fi
         done
 
@@ -95,10 +95,10 @@ runs:
         fi
         for PATCH in $(ls "$PATCH_DIR"/*.patch | sort -V); do
           echo "Applying patch: $(basename "$PATCH")"
-          if ! patch -p1 --dry-run < "$PATCH" 2>/dev/null; then
-            echo "⚠ $(basename "$PATCH") already applied upstream, skipping"
-          else
+          if patch -p1 --dry-run < "$PATCH" 2>/dev/null; then
             patch -p1 < "$PATCH"
             echo "✅ $(basename "$PATCH") applied."
+          else
+            echo "⚠ $(basename "$PATCH") incompatible or already applied, skipping"
           fi
         done
