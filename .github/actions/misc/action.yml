@@ -84,9 +84,14 @@ runs:
         CONFIG_F2FS_UNFAIR_RWSEM=y
         EOF
 
-        # Trim unused symbols - disable only if GKI allows it
-        if ! grep -q "CONFIG_TRIM_UNUSED_KSYMS=y" "$KERNEL_COMMON/arch/arm64/configs/gki_defconfig" 2>/dev/null; then
-          echo '# CONFIG_TRIM_UNUSED_KSYMS is not set' >> "$FRAGMENT"
+        # Trim unused symbols - disable only if GKI allows it.
+        # On a16-6.12 the Kconfig defaults TRIM_UNUSED_KSYMS to y regardless
+        # of the defconfig text; disabling it would trip the Bazel config
+        # checker.
+        if [ "${{ inputs.kernel_version }}" != "6.12" ]; then
+          if ! grep -q "CONFIG_TRIM_UNUSED_KSYMS=y" "$KERNEL_COMMON/arch/arm64/configs/gki_defconfig" 2>/dev/null; then
+            echo '# CONFIG_TRIM_UNUSED_KSYMS is not set' >> "$FRAGMENT"
+          fi
         fi
 
         # === Duchamp Performance Tuning ===

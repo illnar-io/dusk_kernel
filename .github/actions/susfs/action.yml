@@ -237,16 +237,18 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}/kernel/common
       run: |
-        # Check if SUSFS 50_add functions already exist in kernel source (stock
-        # .c definitions or KSU hooks static inline in headers). If KSU hooks
-        # have already made these functions static inline in the header, the
-        # 50_add patch would cause redefinition errors and should be skipped.
-        if grep -q "unshare_userns\|make_kuid\|msg_init_ns" kernel/user_namespace.c 2>/dev/null || \
-           grep -q "unshare_userns\|make_kuid\|msg_init_ns" ipc/msg.c 2>/dev/null || \
-           grep -q "static inline.*create_user_ns\|static inline.*msg_init_ns" include/linux/user_namespace.h 2>/dev/null; then
-          echo "⚠ SUSFS 50_add functions already present in kernel, skipping 50_add patch"
+        # Check if SUSFS core functions already exist (from KSU hooks or a
+        # prior successful apply). Use the actual SUSFS functions rather than
+        # generic kernel helpers that KSU may also provide.
+        if grep -q "susfs_set_uname\|susfs_init" fs/susfs.c 2>/dev/null || \
+           grep -q "susfs_set_uname\|susfs_init" kernel/susfs.c 2>/dev/null; then
+          echo "⚠ SUSFS core functions already present, skipping 50_add patch"
         else
           patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
+          # Verify the patch added the needed symbols
+          if ! grep -q "susfs_set_uname" fs/susfs.c 2>/dev/null && ! grep -q "susfs_set_uname" kernel/susfs.c 2>/dev/null; then
+            echo "⚠ WARNING: SUSFS functions not found after 50_add patch attempt - SUSFS will be unavailable" >&2
+          fi
         fi
 
     - name: Revert Android 12 5.10 Fake Patches

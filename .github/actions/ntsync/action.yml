@@ -83,13 +83,18 @@ runs:
           exit 0
         fi
 
-        # Add NTSYNC config to drivers/misc/Kconfig if not present
-        if ! grep -q '^config NTSYNC' drivers/misc/Kconfig; then
-          printf '\nconfig NTSYNC\n\ttristate "NT synchronization primitive emulation"\n\tdefault m\n\thelp\n\t  This module provides kernel support for emulation of Windows NT\n\t  synchronization primitives. It is not a hardware driver.\n\n\t  To compile this driver as a module, choose M here: the\n\t  module will be called ntsync.\n\n\t  If unsure, say N.\n' >> drivers/misc/Kconfig
-          echo "Added NTSYNC config to Kconfig"
-        else
-          echo "NTSYNC config already present in Kconfig"
+        # Check if NTSYNC Kconfig already exists anywhere in the tree.
+        # On newer kernels (e.g. a16-6.12) ntsync is in-tree with its own
+        # Kconfig in a different file; adding a duplicate entry would break
+        # kernel config generation.
+        if grep -rq "config NTSYNC\b" --include="Kconfig" . 2>/dev/null; then
+          echo "NTSYNC Kconfig already present in tree, skipping Kconfig/Makefile setup"
+          exit 0
         fi
+
+        # Add NTSYNC config to drivers/misc/Kconfig
+        printf '\nconfig NTSYNC\n\ttristate "NT synchronization primitive emulation"\n\tdefault m\n\thelp\n\t  This module provides kernel support for emulation of Windows NT\n\t  synchronization primitives. It is not a hardware driver.\n\n\t  To compile this driver as a module, choose M here: the\n\t  module will be called ntsync.\n\n\t  If unsure, say N.\n' >> drivers/misc/Kconfig
+        echo "Added NTSYNC config to Kconfig"
 
         # Add NTSYNC entry to drivers/misc/Makefile if not present
         if ! grep -q 'obj-$(CONFIG_NTSYNC)' drivers/misc/Makefile; then

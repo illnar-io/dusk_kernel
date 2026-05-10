@@ -83,6 +83,7 @@ runs:
         if [[ "${{ inputs.android_version }}" == "android14" && "${{ inputs.kernel_version }}" == "6.1" ]] || \
            [[ "${{ inputs.kernel_version }}" == "6.6" ]] || \
            [[ "${{ inputs.kernel_version }}" == "6.12" ]] || \
+           [[ "${{ inputs.android_version }}" == "android13" && "${{ inputs.kernel_version }}" == "5.15" ]] || \
            [[ "${{ inputs.android_version }}" == "android14" && "${{ inputs.kernel_version }}" == "5.15" ]]; then
           echo "⚠ Kernel ${{ inputs.kernel_version }}.${{ inputs.sublevel }} already has multi-compression support, skipping ZRAM patches"
           exit 0
