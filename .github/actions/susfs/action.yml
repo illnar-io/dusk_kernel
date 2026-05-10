@@ -237,13 +237,25 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}/kernel/common
       run: |
-        # Check if SUSFS core functions already exist (from KSU hooks or a
-        # prior successful apply). Use the actual SUSFS functions rather than
-        # generic kernel helpers that KSU may also provide.
-        if grep -q "susfs_set_uname\|susfs_init" fs/susfs.c 2>/dev/null || \
-           grep -q "susfs_set_uname\|susfs_init" kernel/susfs.c 2>/dev/null; then
-          echo "⚠ SUSFS core functions already present, skipping 50_add patch"
+        # If KSU (KernelSU-Next or KernelSU) already integrated SUSFS into
+        # its own build system, skip the 50_add patch — it would duplicate
+        # hooks.  If not (e.g. ReSukiSU), the 50_add is essential because it
+        # wires SUSFS into the main kernel tree.
+        KSU_DIR="${KSU_DIR:-KernelSU}"
+        KSU_PARENT="${{ github.workspace }}/kernel"
+        SUSFS_IN_KSU=false
+        for candidate in KernelSU-Next KernelSU "$KSU_DIR"; do
+          ksu_path="$KSU_PARENT/$candidate"
+          if [ -f "$ksu_path/kernel/Kbuild" ] && grep -q "susfs" "$ksu_path/kernel/Kbuild" 2>/dev/null; then
+            SUSFS_IN_KSU=true
+            break
+          fi
+        done
+
+        if $SUSFS_IN_KSU; then
+          echo "✅ SUSFS already integrated via KSU build system, skipping 50_add patch"
         else
+          echo "→ Applying 50_add patch (standalone SUSFS integration)"
           patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
           # Verify the patch added the needed symbols
           if ! grep -q "susfs_set_uname" fs/susfs.c 2>/dev/null && ! grep -q "susfs_set_uname" kernel/susfs.c 2>/dev/null; then
