@@ -254,6 +254,13 @@ runs:
 
         if $SUSFS_IN_KSU; then
           echo "✅ SUSFS already integrated via KSU build system, skipping 50_add patch"
+          # KSU only references SUSFS at build time — it does NOT compile
+          # susfs.c.  Make sure the object is linked, otherwise we get
+          # undefined symbols at LTO link time.
+          if ! grep -q "obj-\$.*susfs" fs/Makefile 2>/dev/null; then
+            echo "→ Adding obj-y += susfs.o to fs/Makefile (KSU needs it)"
+            echo "obj-y += susfs.o" >> fs/Makefile
+          fi
         else
           echo "→ Applying 50_add patch (standalone SUSFS integration)"
           patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true

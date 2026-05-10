@@ -16,7 +16,10 @@ runs:
 
         rm -rf common/android/abi_gki_protected_exports_*
 
-        if ls -1 common/android/abi_gki_protected_exports_* >/dev/null 2>&1; then
+        # Use a glob-safe check — 'ls' on an unmatched glob silently lists
+        # the current directory (if nullglob is set), creating a false
+        # positive.  compgen avoids that footgun.
+        if compgen -G "common/android/abi_gki_protected_exports_*" >/dev/null 2>&1; then
           echo "Error: abi_gki_protected_exports_* still exists after removal"
           ls -la common/android/abi_gki_protected_exports_* || true
           exit 1
