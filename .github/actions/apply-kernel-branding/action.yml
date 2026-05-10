@@ -42,15 +42,12 @@ runs:
 
         echo "Getting last commit timestamp from kernel source..."
 
-
         COMMIT_TIMESTAMP=$(git log -1 --format=%ct 2>/dev/null || echo "$(date +%s)")
-        KERNEL_BUILD_DATE=$(date -u)
 
         export SOURCE_DATE_EPOCH=$COMMIT_TIMESTAMP
         echo "SOURCE_DATE_EPOCH=$COMMIT_TIMESTAMP" >> $GITHUB_ENV
-
-        export KBUILD_BUILD_TIMESTAMP="$KERNEL_BUILD_DATE"
-        echo "KBUILD_BUILD_TIMESTAMP=$KERNEL_BUILD_DATE" >> $GITHUB_ENV
+        export KBUILD_BUILD_TIMESTAMP="@${COMMIT_TIMESTAMP}"
+        echo "KBUILD_BUILD_TIMESTAMP=@${COMMIT_TIMESTAMP}" >> "$GITHUB_ENV"
 
     - name: Apply Kernel Configuration
       if: ${{ inputs.variant == 'DUSK' }}
