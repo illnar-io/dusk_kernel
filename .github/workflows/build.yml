@@ -313,10 +313,25 @@ jobs:
         if-no-files-found: ignore
         compression-level: 0
 
+    - name: Generate AnyKernel3 zip name
+      id: zip_name
+      shell: bash
+      run: |
+        case "${{ inputs.root }}" in
+          KernelSU-Next) short=ksun ;;
+          SukiSU-Ultra)  short=sukisu ;;
+          ReSukiSU)      short=resukisu ;;
+          *)             short="${{ inputs.root}}" ;;
+        esac
+        # github.run_number is the workflow run number
+        RUN_NUM=${{ github.run_number }}
+        DATE=$(TZ=UTC date +%d_%m_%y)
+        echo "zip_name=${RUN_NUM}_${short}_${DATE}" >> "$GITHUB_OUTPUT"
+
     - name: Upload Artifacts
       uses: actions/upload-artifact@v7
       with:
-        name: ${{ steps.extract.outputs.file_name }}-AnyKernel3
+        name: ${{ steps.zip_name.outputs.zip_name }}
         path: ${{ github.workspace }}/AnyKernel3/**
         if-no-files-found: ignore
         compression-level: 9
