@@ -323,10 +323,9 @@ jobs:
           ReSukiSU)      short=resukisu ;;
           *)             short="${{ inputs.root}}" ;;
         esac
-        # github.run_number is the workflow run number
         RUN_NUM=${{ github.run_number }}
         DATE=$(TZ=UTC date +%d_%m_%y)
-        echo "zip_name=${RUN_NUM}_${short}_${DATE}" >> "$GITHUB_OUTPUT"
+        echo "zip_name=${{ steps.extract.outputs.file_name }}-AnyKernel3_${RUN_NUM}_${short}_${DATE}" >> "$GITHUB_OUTPUT"
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v7
