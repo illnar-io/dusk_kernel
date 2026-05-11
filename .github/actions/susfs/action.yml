@@ -109,62 +109,62 @@ runs:
         if [ "$FOUND" -eq 0 ]; then
           echo "⚠ SUSFS Kconfig not found in tree - injecting Kconfig entries"
           mkdir -p "$KERNEL_COMMON/fs/susfs"
-          cat > "$KERNEL_COMMON/fs/susfs/Kconfig" << 'SUSFSKCONFIG'
-config KSU_SUSFS
-    bool "KernelSU SUSFS support"
-    default y
-    help
-      Support for KernelSU SUSFS (SUcide Sane FS) features
-
-if KSU_SUSFS
-
-config KSU_SUSFS_SUS_PATH
-    bool "/proc/version and /proc/sysrq-trigger hiding"
-    help
-      Hiding /proc/version and /proc/sysrq-trigger
-
-config KSU_SUSFS_SUS_MOUNT
-    bool "SUSFS fake mount"
-    help
-      Suspend mount hiding
-
-config KSU_SUSFS_SUS_KSTAT
-    bool "SUSFS fake kstat"
-    help
-      Fake kstat for hiding
-
-config KSU_SUSFS_SPOOF_UNAME
-    bool "SUSFS spoof uname"
-    help
-      Spoof uname syscall
-
-config KSU_SUSFS_ENABLE_LOG
-    bool "SUSFS debug log"
-    help
-      Enable SUSFS debug logging
-
-config KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
-    bool "Hide SUSFS symbols"
-    help
-      Hide SUSFS symbols from /proc/kallsyms
-
-config KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
-    bool "Spoof cmdline / bootconfig"
-    help
-      Spoof /proc/cmdline and /proc/bootconfig
-
-config KSU_SUSFS_OPEN_REDIRECT
-    bool "SUSFS open redirect"
-    help
-      SUSFS open redirect support
-
-config KSU_SUSFS_SUS_MAP
-    bool "SUSFS sus map"
-    help
-      SUSFS sus map support
-
-endif
-SUSFSKCONFIG
+          {
+            echo 'config KSU_SUSFS'
+            echo '    bool "KernelSU SUSFS support"'
+            echo '    default y'
+            echo '    help'
+            echo '      Support for KernelSU SUSFS (SUcide Sane FS) features'
+            echo ''
+            echo 'if KSU_SUSFS'
+            echo ''
+            echo 'config KSU_SUSFS_SUS_PATH'
+            echo '    bool "/proc/version and /proc/sysrq-trigger hiding"'
+            echo '    help'
+            echo '      Hiding /proc/version and /proc/sysrq-trigger'
+            echo ''
+            echo 'config KSU_SUSFS_SUS_MOUNT'
+            echo '    bool "SUSFS fake mount"'
+            echo '    help'
+            echo '      Suspend mount hiding'
+            echo ''
+            echo 'config KSU_SUSFS_SUS_KSTAT'
+            echo '    bool "SUSFS fake kstat"'
+            echo '    help'
+            echo '      Fake kstat for hiding'
+            echo ''
+            echo 'config KSU_SUSFS_SPOOF_UNAME'
+            echo '    bool "SUSFS spoof uname"'
+            echo '    help'
+            echo '      Spoof uname syscall'
+            echo ''
+            echo 'config KSU_SUSFS_ENABLE_LOG'
+            echo '    bool "SUSFS debug log"'
+            echo '    help'
+            echo '      Enable SUSFS debug logging'
+            echo ''
+            echo 'config KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS'
+            echo '    bool "Hide SUSFS symbols"'
+            echo '    help'
+            echo '      Hide SUSFS symbols from /proc/kallsyms'
+            echo ''
+            echo 'config KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG'
+            echo '    bool "Spoof cmdline / bootconfig"'
+            echo '    help'
+            echo '      Spoof /proc/cmdline and /proc/bootconfig'
+            echo ''
+            echo 'config KSU_SUSFS_OPEN_REDIRECT'
+            echo '    bool "SUSFS open redirect"'
+            echo '    help'
+            echo '      SUSFS open redirect support'
+            echo ''
+            echo 'config KSU_SUSFS_SUS_MAP'
+            echo '    bool "SUSFS sus map"'
+            echo '    help'
+            echo '      SUSFS sus map support'
+            echo ''
+            echo 'endif'
+          } > "$KERNEL_COMMON/fs/susfs/Kconfig"
           if grep -q 'source.*fs/susfs' "$KERNEL_COMMON/fs/Kconfig" 2>/dev/null; then
             echo "  fs/Kconfig already sources fs/susfs/Kconfig"
           else
