@@ -8,11 +8,22 @@ runs:
       run: |
         set -euo pipefail
 
-        # The runner may not ship binutils (ld), but BBG's genheaders and
-        # other host tools need it.  Don't swallow errors here.
-        sudo apt-get update -qq
-        sudo apt-get install -y -qq binutils
-        command -v ld >/dev/null || { echo "::error::'ld' not found even after binutils install"; exit 1; }
+        # BBG's genheaders needs 'ld' in PATH.  The runner has ld.lld
+        # (from LLVM) but NOT 'ld'.  Create a symlink in /usr/local/bin
+        # (always on PATH) so clang can find it.
+        mkdir -p /usr/local/bin
+        for SRC in /usr/lib/llvm-*/bin/ld.lld $(command -v ld.lld 2>/dev/null || true); do
+          [ -x "$SRC" ] || continue
+          ln -sf "$SRC" /usr/local/bin/ld
+          echo "→ /usr/local/bin/ld -> $SRC"
+          break
+        done
+        if ! command -v ld >/dev/null; then
+          echo "::error::'ld' not found.  Installing binutils as fallback."
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq binutils
+          command -v ld >/dev/null || { echo "::error::'ld' still not found"; exit 1; }
+        fi
 
         mkdir -p "${{ github.workspace }}/kernel"
         mkdir -p "${{ github.workspace }}/git-repo"
