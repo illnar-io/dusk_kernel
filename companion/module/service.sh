@@ -2,11 +2,7 @@
 
 MODDIR=${0%/*}
 
-# ============================================
-# DUSK Kernel Companion - Boot-time tunings
-# ============================================
-
-exec 2>"$MODDIR/dusk_companion.log"
+exec > "$MODDIR/dusk_companion.log" 2>&1
 
 log() {
   echo "[dusk] $(date '+%H:%M:%S') $*"
@@ -24,7 +20,6 @@ for cpu in /sys/devices/system/cpu/cpufreq/policy*; do
   fi
 done
 
-# schedutil rate limits
 for path in /sys/devices/system/cpu/cpufreq/schedutil; do
   [ -f "$path/up_rate_limit_us" ] && echo 500 > "$path/up_rate_limit_us" 2>/dev/null && \
     log "schedutil up_rate_limit_us = 500"
@@ -34,7 +29,7 @@ for path in /sys/devices/system/cpu/cpufreq/schedutil; do
     log "schedutil iowait_boost disabled"
 done
 
-# ---- GPU governor & max freq (Mali G78) ----
+# ---- GPU governor & max freq ----
 mali_devfreq="/sys/class/misc/mali0/device/devfreq"
 if [ -d "$mali_devfreq" ]; then
   echo performance > "$mali_devfreq/governor" 2>/dev/null && \
@@ -46,7 +41,6 @@ if [ -d "$mali_devfreq" ]; then
   fi
 fi
 
-# fallback: find any devfreq device matching gpu/mali
 for d in /sys/class/devfreq/*; do
   [ -d "$d" ] || continue
   name=$(cat "$d/name" 2>/dev/null)
@@ -64,7 +58,6 @@ done
 for tz in /sys/class/thermal/thermal_zone*; do
   [ -d "$tz" ] || continue
   type=$(cat "$tz/type" 2>/dev/null)
-  # Set all thermal zones to 'step_wise' or 'user_space' for reduced throttling
   if [ -f "$tz/policy" ]; then
     current=$(cat "$tz/policy")
     case "$current" in
@@ -76,21 +69,34 @@ for tz in /sys/class/thermal/thermal_zone*; do
   fi
 done
 
-# Raise trip point temperatures where writable
 for trip in /sys/class/thermal/thermal_message/trip_point_*_temp; do
   [ -f "$trip" ] && echo 65000 > "$trip" 2>/dev/null && \
     log "${trip##*/} = 65°C"
 done
 
-# ---- ZRAM recompression (multi-comp supported on 6.1.157+) ----
+# ---- ZRAM recompression ----
 zram="/sys/block/zram0"
 if [ -d "$zram" ]; then
-  # Enable recompression if supported
   [ -f "$zram/recompress" ] && echo idle > "$zram/recompress" 2>/dev/null && \
     log "ZRAM recompress = idle"
-  # Set algo to zstd (highest ratio)
   [ -f "$zram/comp_algorithm" ] && echo zstd > "$zram/comp_algorithm" 2>/dev/null && \
     log "ZRAM comp_algorithm = zstd"
 fi
 
 log "=== DUSK Companion done ==="
+
+# ---- Build status description for module.prop ----
+MODULE_PROP="/data/adb/modules/dusk_companion/module.prop"
+
+ksu()      { [ -e /proc/manager ] && echo "yes" || echo "no"; }
+susfs()    { [ -e /proc/fs/susfs ] && echo "yes" || echo "no"; }
+ntsync()   { lsmod 2>/dev/null | grep -q ntsync && echo "yes" || echo "no"; }
+sched()    { [ "$(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor 2>/dev/null)" = "schedutil" ] && echo "yes" || echo "no"; }
+gpu_gov()  { g=$(cat /sys/class/devfreq/*/governor 2>/dev/null | head -1); [ "$g" = "performance" ] && echo "yes" || echo "no"; }
+zram()     { cat /sys/block/zram0/comp_algorithm 2>/dev/null | grep -q zstd && echo "yes" || echo "no"; }
+
+DESC="KSU:$(ksu) SUSFS:$(susfs) NTSYNC:$(ntsync) CPU:$(sched) GPU:$(gpu_gov) ZRAM:$(zram)"
+
+if [ -f "$MODULE_PROP" ]; then
+  sed -i "s/^description=.*/description=$DESC/" "$MODULE_PROP"
+fi
