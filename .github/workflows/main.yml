@@ -59,7 +59,7 @@ on:
 
 jobs:
   build-a12-5-10:
-    if: ${{ inputs.kernel_build_version == 'All' || inputs.kernel_build_version == 'a12-5-10' }}
+    if: false  # disabled during debug; re-enable later
     uses: ./.github/workflows/prepare.yml
     with:
       config_file: .github/kernel-config/a12-5.10.json
@@ -71,7 +71,7 @@ jobs:
     secrets: inherit
 
   build-a13-5-10:
-    if: ${{ inputs.kernel_build_version == 'All' || inputs.kernel_build_version == 'a13-5-10' }}
+    if: false  # disabled during debug; re-enable later
     uses: ./.github/workflows/prepare.yml
     with:
       config_file: .github/kernel-config/a13-5.10.json
@@ -83,7 +83,7 @@ jobs:
     secrets: inherit
 
   build-a13-5-15:
-    if: ${{ inputs.kernel_build_version == 'All' || inputs.kernel_build_version == 'a13-5-15' }}
+    if: false  # disabled during debug; re-enable later
     uses: ./.github/workflows/prepare.yml
     with:
       config_file: .github/kernel-config/a13-5.15.json
@@ -95,7 +95,7 @@ jobs:
     secrets: inherit
 
   build-a14-5-15:
-    if: ${{ inputs.kernel_build_version == 'All' || inputs.kernel_build_version == 'a14-5-15' }}
+    if: false  # disabled during debug; re-enable later
     uses: ./.github/workflows/prepare.yml
     with:
       config_file: .github/kernel-config/a14-5.15.json
@@ -119,7 +119,7 @@ jobs:
     secrets: inherit
 
   build-a15-6-6:
-    if: ${{ inputs.kernel_build_version == 'All' || inputs.kernel_build_version == 'a15-6-6' }}
+    if: false  # disabled during debug; re-enable later
     uses: ./.github/workflows/prepare.yml
     with:
       config_file: .github/kernel-config/a15-6.6.json
@@ -131,7 +131,7 @@ jobs:
     secrets: inherit
 
   build-a16-6-12:
-    if: ${{ inputs.kernel_build_version == 'All' || inputs.kernel_build_version == 'a16-6-12' }}
+    if: false  # disabled during debug; re-enable later
     uses: ./.github/workflows/prepare.yml
     with:
       config_file: .github/kernel-config/a16-6.12.json
