@@ -106,25 +106,89 @@ runs:
             FOUND=$((FOUND + 1))
           fi
         done
-        if [ "$FOUND" -gt 0 ]; then
-          {
-            echo ""
-            echo "# KernelSU SUSFS Configuration"
-            echo "CONFIG_KSU_SUSFS=y"
-            echo "CONFIG_KSU_SUSFS_SUS_PATH=y"
-            echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y"
-            echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y"
-            echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y"
-            echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y"
-            echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y"
-            echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y"
-            echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y"
-            echo "CONFIG_KSU_SUSFS_SUS_MAP=y"
-          } >> "$FRAGMENT"
-          echo "✅ SUSFS config entries added (Kconfig found for $FOUND options)"
-        else
-          echo "⚠ SUSFS Kconfig not found in tree - SUSFS features unavailable"
+        if [ "$FOUND" -eq 0 ]; then
+          echo "⚠ SUSFS Kconfig not found in tree - injecting Kconfig entries"
+          mkdir -p "$KERNEL_COMMON/fs/susfs"
+          cat > "$KERNEL_COMMON/fs/susfs/Kconfig" << 'SUSFSKCONFIG'
+config KSU_SUSFS
+	bool "KernelSU SUSFS support"
+	default y
+	help
+	  Support for KernelSU SUSFS (SUcide Sane FS) features
+
+if KSU_SUSFS
+
+config KSU_SUSFS_SUS_PATH
+	bool "/proc/version and /proc/sysrq-trigger hiding"
+	help
+	  Hiding /proc/version and /proc/sysrq-trigger
+
+config KSU_SUSFS_SUS_MOUNT
+	bool "SUSFS fake mount"
+	help
+	  Suspend mount hiding
+
+config KSU_SUSFS_SUS_KSTAT
+	bool "SUSFS fake kstat"
+	help
+	  Fake kstat for hiding
+
+config KSU_SUSFS_SPOOF_UNAME
+	bool "SUSFS spoof uname"
+	help
+	  Spoof uname syscall
+
+config KSU_SUSFS_ENABLE_LOG
+	bool "SUSFS debug log"
+	help
+	  Enable SUSFS debug logging
+
+config KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
+	bool "Hide SUSFS symbols"
+	help
+	  Hide SUSFS symbols from /proc/kallsyms
+
+config KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
+	bool "Spoof cmdline / bootconfig"
+	help
+	  Spoof /proc/cmdline and /proc/bootconfig
+
+config KSU_SUSFS_OPEN_REDIRECT
+	bool "SUSFS open redirect"
+	help
+	  SUSFS open redirect support
+
+config KSU_SUSFS_SUS_MAP
+	bool "SUSFS sus map"
+	help
+	  SUSFS sus map support
+
+endif
+SUSFSKCONFIG
+          if grep -q 'source.*fs/susfs' "$KERNEL_COMMON/fs/Kconfig" 2>/dev/null; then
+            echo "  fs/Kconfig already sources fs/susfs/Kconfig"
+          else
+            echo "" >> "$KERNEL_COMMON/fs/Kconfig"
+            echo "source \"fs/susfs/Kconfig\"" >> "$KERNEL_COMMON/fs/Kconfig"
+            echo "  Added source to fs/Kconfig"
+          fi
+          FOUND=10
         fi
+        {
+          echo ""
+          echo "# KernelSU SUSFS Configuration"
+          echo "CONFIG_KSU_SUSFS=y"
+          echo "CONFIG_KSU_SUSFS_SUS_PATH=y"
+          echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y"
+          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y"
+          echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y"
+          echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y"
+          echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y"
+          echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y"
+          echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y"
+          echo "CONFIG_KSU_SUSFS_SUS_MAP=y"
+        } >> "$FRAGMENT"
+        echo "✅ SUSFS config entries added to fragment"
 
     - name: Apply Kernel SUSFS Patches
       shell: bash
@@ -237,10 +301,6 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}/kernel/common
       run: |
-        # If KSU (KernelSU-Next or KernelSU) already integrated SUSFS into
-        # its own build system, skip the 50_add patch — it would duplicate
-        # hooks.  If not (e.g. ReSukiSU), the 50_add is essential because it
-        # wires SUSFS into the main kernel tree.
         KSU_DIR="${KSU_DIR:-KernelSU}"
         KSU_PARENT="${{ github.workspace }}/kernel"
         SUSFS_IN_KSU=false
@@ -252,22 +312,20 @@ runs:
           fi
         done
 
-        if $SUSFS_IN_KSU; then
-          echo "✅ SUSFS already integrated via KSU build system, skipping 50_add patch"
-          # KSU only references SUSFS at build time — it does NOT compile
-          # susfs.c.  Make sure the object is linked, otherwise we get
-          # undefined symbols at LTO link time.
-          if ! grep -q "obj-\$.*susfs" fs/Makefile 2>/dev/null; then
-            echo "→ Adding obj-y += susfs.o to fs/Makefile (KSU needs it)"
-            echo "obj-y += susfs.o" >> fs/Makefile
-          fi
-        else
-          echo "→ Applying 50_add patch (standalone SUSFS integration)"
-          patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
-          # Verify the patch added the needed symbols
-          if ! grep -q "susfs_set_uname" fs/susfs.c 2>/dev/null && ! grep -q "susfs_set_uname" kernel/susfs.c 2>/dev/null; then
-            echo "⚠ WARNING: SUSFS functions not found after 50_add patch attempt - SUSFS will be unavailable" >&2
-          fi
+        # Always ensure susfs.o is linked
+        if ! grep -q "obj-\$.*susfs" fs/Makefile 2>/dev/null; then
+          echo "→ Adding obj-y += susfs.o to fs/Makefile"
+          echo "obj-y += susfs.o" >> fs/Makefile
+        fi
+
+        # Always apply the 50_add patch for VFS hooks (susfs needs these to
+        # intercept paths, mounts, kstat, etc. — the KSU module-level hooks
+        # alone are insufficient).
+        echo "→ Applying 50_add patch (VFS hooks)"
+        patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
+        # Verify the patch added the needed symbols
+        if ! grep -q "susfs_set_uname" fs/susfs.c 2>/dev/null && ! grep -q "susfs_set_uname" kernel/susfs.c 2>/dev/null; then
+          echo "⚠ WARNING: SUSFS functions not found after 50_add patch attempt - SUSFS will be unavailable" >&2
         fi
 
     - name: Revert Android 12 5.10 Fake Patches
