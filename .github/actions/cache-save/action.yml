@@ -170,6 +170,24 @@ runs:
           echo "::group:: [$((idx+1))/${#PATHS_ARRAY[@]}] Uploading Assets ($CACHE_BUCKET)"
           MAX_SIZE=2000000000 # ~1.86GB
           
+          # Check if cache has changed by comparing with previous release asset
+          SKIP_UPLOAD=false
+          if gh release view "$TAG_NAME" --repo "$TARGET_REPO" >/dev/null 2>&1; then
+            echo "Checking if cache has changed..."
+            # Try to get the size of the previous asset with the same name
+            PREV_SIZE=$(gh release view "$TAG_NAME" --repo "$TARGET_REPO" --json assets --jq ".assets[] | select(.name == \"$FILENAME\") | .size" 2>/dev/null || echo "0")
+            if [ "$PREV_SIZE" = "$FILE_SIZE" ]; then
+              echo "⚠️ Cache size unchanged ($FILE_SIZE bytes). Skipping upload to save bandwidth."
+              SKIP_UPLOAD=true
+            fi
+          fi
+          
+          if [ "$SKIP_UPLOAD" = "true" ]; then
+            rm -f "$FILENAME"
+            echo "::endgroup::"
+            continue
+          fi
+          
           if [ "$FILE_SIZE" -gt "$MAX_SIZE" ]; then
             echo "⚠ File > 2GB. Splitting..."
             split -b 1500M -a 2 "$FILENAME" "${FILENAME}.part"
