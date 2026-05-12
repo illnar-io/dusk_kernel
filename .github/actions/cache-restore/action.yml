@@ -207,16 +207,17 @@ runs:
             if [ "$IS_SPLIT" = "true" ]; then
               PARTS=$(ls "$FINAL_ARCHIVE.part"* | sort)
               if [ "$COMPRESSED" = "true" ]; then
-                cat $PARTS | tar -I "zstd -d -T0" -xvf - -C "$EXTRACT_DIR"
+                # Extract quietly (no verbose listing)
+                cat $PARTS | tar -I "zstd -d -T0" -xf - -C "$EXTRACT_DIR"
               else
-                cat $PARTS | tar -xvf - -C "$EXTRACT_DIR"
+                cat $PARTS | tar -xf - -C "$EXTRACT_DIR"
               fi
               rm -f $PARTS
             else
               if [ "$COMPRESSED" = "true" ]; then
-                tar -I "zstd -d -T0" -xvf "$FINAL_ARCHIVE" -C "$EXTRACT_DIR"
+                tar -I "zstd -d -T0" -xf "$FINAL_ARCHIVE" -C "$EXTRACT_DIR"
               else
-                tar -xvf "$FINAL_ARCHIVE" -C "$EXTRACT_DIR"
+                tar -xf "$FINAL_ARCHIVE" -C "$EXTRACT_DIR"
               fi
               rm -f "$FINAL_ARCHIVE"
             fi
@@ -228,6 +229,22 @@ runs:
             MATCHED_KEYS+=("$KEY")
             CACHE_SIZE=$(du -sh "$CACHE_PATH" 2>/dev/null | awk '{print $1}' || echo "unknown")
             CACHE_SIZES+=("$CACHE_SIZE")
+            # Provide a concise summary of restored path (top-level + one level deep)
+            echo "--- Cache restore summary for: $CACHE_PATH ---"
+            if [ -e "$CACHE_PATH" ]; then
+              du -sh "$CACHE_PATH" || true
+              du -h --max-depth=1 "$CACHE_PATH" 2>/dev/null | sort -hr | head -n 10 || true
+              echo "Showing one-level-deep details for top entries (up to 5 each):"
+              while read -r _entry; do
+                entry_path=$(echo "$_entry" | awk '{print $2}')
+                [ -z "$entry_path" ] && continue
+                if [ "$entry_path" = "$CACHE_PATH" ]; then
+                  continue
+                fi
+                echo "-> $entry_path :"
+                du -h --max-depth=1 "$entry_path" 2>/dev/null | sort -hr | head -n 5 || true
+              done < <(du -h --max-depth=1 "$CACHE_PATH" 2>/dev/null | sort -hr | head -n 10)
+            fi
             break
           done <<< "$SEARCH_LIST"
           

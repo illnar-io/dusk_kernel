@@ -73,12 +73,35 @@ runs:
       working-directory: ${{ github.workspace }}
       run: |
         set -euo pipefail
+        summarize_dir() {
+          local path="$1"
+          local top_n=${2:-10}
+          local sub_n=${3:-5}
+          if [ ! -e "$path" ]; then
+            echo "Path $path not found"
+            return
+          fi
+          echo "---------------"
+          echo "Summary: $path"
+          du -sh "$path" || true
+          echo "Top ${top_n} entries at top level:"
+          du -h --max-depth=1 "$path" 2>/dev/null | sort -hr | head -n $top_n || true
+          echo "\nShowing up to ${sub_n} entries one level deeper for the largest top-level items:"
+          while read -r size name; do
+            # skip the root entry which matches the path itself
+            if [ "${name%/}" = "${path%/}" ]; then
+              continue
+            fi
+            echo "-> $name :"
+            du -h --max-depth=1 "$name" 2>/dev/null | sort -hr | head -n $sub_n || true
+          done < <(du -h --max-depth=1 "$path" 2>/dev/null | sort -hr | head -n $top_n)
+          echo "---------------"
+        }
+
         echo "==============="
         echo "=== .ccache ==="
         echo "==============="
-        du -sh /home/runner/.ccache || true
-        ls -l /home/runner/.ccache || true
-        echo "==============="
+        summarize_dir /home/runner/.ccache 10 5 || true
 
     - name: Show Bazel Cache folder Stats
       shell: bash
@@ -88,9 +111,7 @@ runs:
         echo "===================="
         echo "=== .cache/bazel ==="
         echo "===================="
-        du -sh /home/runner/.cache/bazel || true
-        ls -l /home/runner/.cache/bazel || true
-        echo "===================="
+        summarize_dir /home/runner/.cache/bazel 10 5 || true
         
     - name: Show ld cache folder Stats
       shell: bash
@@ -100,7 +121,5 @@ runs:
         echo "================="
         echo "=== .ld_cache ==="
         echo "================="
-        du -sh /home/runner/.ld_cache || true
-        ls -l /home/runner/.ld_cache || true
-        echo "================="
+        summarize_dir /home/runner/.ld_cache 10 5 || true
         
