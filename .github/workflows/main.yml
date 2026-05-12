@@ -27,7 +27,6 @@ on:
           - a14-6-1
           - a15-6-6
           - a16-6-12
-          - Companion
         default: All
       root:
         description: "Root solution"
@@ -57,6 +56,10 @@ on:
         description: "Use repo for downloading kernel source"
         type: boolean
         default: true
+      build_companion:
+        description: "Build DUSK Companion module"
+        type: boolean
+        default: false
 
 jobs:
   build-a12-5-10:
@@ -144,6 +147,7 @@ jobs:
     secrets: inherit
 
   build-companion:
+    if: inputs.build_companion
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -237,7 +241,6 @@ jobs:
     - build-a14-6-1
     - build-a15-6-6
     - build-a16-6-12
-    - build-companion
 
     env:
       GH_TOKEN: ${{ github.token }}
@@ -477,13 +480,6 @@ jobs:
       with:
         path: release-assets
         pattern: '*-BootImages'
-        merge-multiple: false
-
-    - name: Download Companion Module
-      uses: actions/download-artifact@v7
-      with:
-        path: release-assets
-        pattern: 'DUSK-Companion'
         merge-multiple: false
 
     - name: Zip AnyKernel3 for Release

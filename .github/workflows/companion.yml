@@ -1,0 +1,19 @@
+name: Build Companion Module
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Prepare DUSK Companion Module
+        uses: ./.github/actions/prepare-companion
+      - name: Upload Companion Module
+        uses: actions/upload-artifact@v7
+        with:
+          name: DUSK-Companion
+          path: ${{ github.workspace }}/companion/dusk-companion-*.zip
+          if-no-files-found: error
+          compression-level: 0
