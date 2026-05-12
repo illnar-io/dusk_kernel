@@ -239,29 +239,72 @@ runs:
               # Create a concatenated archive file but keep parts until extraction succeeds
               cat "${PARTS_ARRAY[@]}" > "$FINAL_ARCHIVE"
 
+              # Attempt to fetch checksum asset (FILENAME.sha256) and verify before extracting
+              CHECKSUM_FILE="$FINAL_ARCHIVE.sha256"
+              EXPECTED_SUM=""
+              if command -v gh >/dev/null 2>&1; then
+                if gh release view "$TAG_NAME" --repo "$TARGET_REPO" >/dev/null 2>&1; then
+                  if gh release download "$TAG_NAME" --repo "$TARGET_REPO" --pattern "$CHECKSUM_FILE" -D . >/dev/null 2>&1; then
+                    if [ -s "$CHECKSUM_FILE" ]; then
+                      EXPECTED_SUM=$(awk '{print $1}' "$CHECKSUM_FILE" || true)
+                      echo "Found checksum for $FINAL_ARCHIVE: $EXPECTED_SUM"
+                    fi
+                  fi
+                fi
+              fi
+
               MAX_EXTRACT_ATTEMPTS=3
               attempt=1
               extracted=false
               while [ $attempt -le $MAX_EXTRACT_ATTEMPTS ]; do
                 echo "Attempting extraction (attempt $attempt/$MAX_EXTRACT_ATTEMPTS)"
-                if [ "$COMPRESSED" = "true" ]; then
-                  if tar -I "zstd -d -T0" -xf "$FINAL_ARCHIVE" -C "$EXTRACT_DIR"; then
+
+                # If we have an expected checksum, verify it
+                if [ -n "$EXPECTED_SUM" ]; then
+                  if command -v sha256sum >/dev/null 2>&1; then
+                    ACTUAL_SUM=$(sha256sum "$FINAL_ARCHIVE" | awk '{print $1}') || ACTUAL_SUM=""
+                  else
+                    ACTUAL_SUM=$(openssl dgst -sha256 "$FINAL_ARCHIVE" | awk '{print $2}') || ACTUAL_SUM=""
+                  fi
+                  echo "  actual=$ACTUAL_SUM expected=$EXPECTED_SUM"
+                  if [ -n "$ACTUAL_SUM" ] && [ "$ACTUAL_SUM" != "$EXPECTED_SUM" ]; then
+                    echo "  ⚠️ Checksum mismatch (will re-download parts)"
+                    extracted=false
+                  else
+                    echo "  Checksum OK or not provided, proceeding to extract"
                     extracted=true
-                    break
                   fi
                 else
-                  if tar -xf "$FINAL_ARCHIVE" -C "$EXTRACT_DIR"; then
-                    extracted=true
-                    break
+                  echo "  No checksum available, proceeding to extraction"
+                  extracted=true
+                fi
+
+                if [ "$extracted" = "true" ]; then
+                  if [ "$COMPRESSED" = "true" ]; then
+                    if tar -I "zstd -d -T0" -xf "$FINAL_ARCHIVE" -C "$EXTRACT_DIR"; then
+                      extracted=true
+                      break
+                    else
+                      extracted=false
+                    fi
+                  else
+                    if tar -xf "$FINAL_ARCHIVE" -C "$EXTRACT_DIR"; then
+                      extracted=true
+                      break
+                    else
+                      extracted=false
+                    fi
                   fi
                 fi
 
-                echo "Extraction failed (possible truncated download)."
+                echo "Extraction failed (possible truncated download or checksum mismatch)."
                 if [ $attempt -lt $MAX_EXTRACT_ATTEMPTS ]; then
                   echo "Re-downloading split parts and retrying..."
-                  # redownload each part (overwrite)
+                  # remove concatenated before re-download
+                  rm -f "$FINAL_ARCHIVE"
                   for part_file in "${PARTS_ARRAY[@]}"; do
                     echo "  Re-downloading $part_file"
+                    rm -f "$part_file"
                     if ! download_asset "$part_file" "$BASE_URL/$part_file"; then
                       echo "::error::Failed to re-download $part_file"
                       exit 1
@@ -269,6 +312,16 @@ runs:
                   done
                   # rebuild concatenated archive
                   cat "${PARTS_ARRAY[@]}" > "$FINAL_ARCHIVE"
+                  # re-fetch checksum if available
+                  if command -v gh >/dev/null 2>&1; then
+                    rm -f "$CHECKSUM_FILE"
+                    gh release download "$TAG_NAME" --repo "$TARGET_REPO" --pattern "$CHECKSUM_FILE" -D . >/dev/null 2>&1 || true
+                    if [ -s "$CHECKSUM_FILE" ]; then
+                      EXPECTED_SUM=$(awk '{print $1}' "$CHECKSUM_FILE" || true)
+                    else
+                      EXPECTED_SUM=""
+                    fi
+                  fi
                 fi
                 attempt=$((attempt+1))
               done

@@ -192,6 +192,14 @@ runs:
           
           FILE_SIZE=$(stat -c%s "$FILENAME")
           echo "Archive created: $FILENAME ($FILE_SIZE bytes)"
+          # Create SHA256 checksum and upload alongside the archive/parts
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$FILENAME" | awk '{print $1}' > "$FILENAME.sha256"
+          else
+            # fallback using openssl
+            openssl dgst -sha256 "$FILENAME" | awk '{print $2}' > "$FILENAME.sha256" || true
+          fi
+          echo "Checksum written: $FILENAME.sha256"
           echo "::endgroup::"
           
           echo "::group:: [$((idx+1))/${#PATHS_ARRAY[@]}] Uploading Assets ($CACHE_BUCKET)"
@@ -226,6 +234,11 @@ runs:
               fi
               rm -f "$part"
             done
+            # Upload checksum for the original archive
+            echo "  Uploading checksum $FILENAME.sha256..."
+            if ! upload_with_retry "$FILENAME.sha256" "$TAG_NAME"; then
+              echo "::warning::Failed to upload checksum $FILENAME.sha256"
+            fi
             rm -rf "$FILENAME"
           else
             echo "Uploading $FILENAME..."
@@ -233,7 +246,13 @@ runs:
               echo "::error::Failed to upload $FILENAME after multiple attempts."
               exit 1
             fi
+            # Upload checksum alongside the archive
+            echo "  Uploading checksum $FILENAME.sha256..."
+            if ! upload_with_retry "$FILENAME.sha256" "$TAG_NAME"; then
+              echo "::warning::Failed to upload checksum $FILENAME.sha256"
+            fi
             rm -f "$FILENAME"
+            rm -f "$FILENAME.sha256"
           fi
           echo "::endgroup::"
         done
