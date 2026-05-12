@@ -88,9 +88,9 @@ log "=== DUSK Companion done ==="
 # ---- Build status description for module.prop ----
 MODULE_PROP="/data/adb/modules/dusk_companion/module.prop"
 
-ksu()      { [ -e /proc/manager ] && echo "yes" || echo "no"; }
-susfs()    { [ -e /proc/fs/susfs ] && echo "yes" || echo "no"; }
-ntsync()   { lsmod 2>/dev/null | grep -q ntsync && echo "yes" || echo "no"; }
+ksu()      { [ -d /data/adb/ksu ] && echo "yes" || echo "no"; }
+susfs()    { dmesg 2>/dev/null | grep -q "KernelSU.*susfs" && echo "yes" || echo "no"; }
+ntsync()   { [ -c /dev/ntsync ] 2>/dev/null && echo "yes" || { lsmod 2>/dev/null | grep -q ntsync && echo "yes" || echo "no"; }; }
 sched()    { [ "$(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor 2>/dev/null)" = "schedutil" ] && echo "yes" || echo "no"; }
 gpu_gov()  { g=$(cat /sys/class/devfreq/*/governor 2>/dev/null | head -1); [ "$g" = "performance" ] && echo "yes" || echo "no"; }
 zram()     { cat /sys/block/zram0/comp_algorithm 2>/dev/null | grep -q zstd && echo "yes" || echo "no"; }

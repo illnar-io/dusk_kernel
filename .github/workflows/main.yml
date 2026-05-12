@@ -27,6 +27,7 @@ on:
           - a14-6-1
           - a15-6-6
           - a16-6-12
+          - Companion
         default: All
       root:
         description: "Root solution"
@@ -142,6 +143,20 @@ jobs:
       use_repo: ${{ inputs.use_repo }}
     secrets: inherit
 
+  build-companion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Prepare DUSK Companion Module
+        uses: ./.github/actions/prepare-companion
+      - name: Upload Companion Module
+        uses: actions/upload-artifact@v7
+        with:
+          name: DUSK-Companion
+          path: ${{ github.workspace }}/companion/dusk-companion-*.zip
+          if-no-files-found: ignore
+          compression-level: 0
+
   rej:
     if: always()
     runs-on: ubuntu-latest
@@ -222,6 +237,7 @@ jobs:
     - build-a14-6-1
     - build-a15-6-6
     - build-a16-6-12
+    - build-companion
 
     env:
       GH_TOKEN: ${{ github.token }}
@@ -461,6 +477,13 @@ jobs:
       with:
         path: release-assets
         pattern: '*-BootImages'
+        merge-multiple: false
+
+    - name: Download Companion Module
+      uses: actions/download-artifact@v7
+      with:
+        path: release-assets
+        pattern: 'DUSK-Companion'
         merge-multiple: false
 
     - name: Zip AnyKernel3 for Release

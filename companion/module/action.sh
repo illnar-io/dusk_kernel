@@ -20,21 +20,23 @@ echo "  $(uname -r)"
 echo ""
 
 # KernelSU
-if [ -e /proc/manager ]; then
+if [ -d /data/adb/ksu ]; then
   check "KernelSU-Next" "yes"
 else
   check "KernelSU-Next" "no"
 fi
 
-# SUSFS
-if [ -e /proc/fs/susfs ]; then
+# SUSFS (compiled into KSU, no standalone proc path)
+if dmesg 2>/dev/null | grep -q "KernelSU.*susfs"; then
   check "SUSFS" "yes"
 else
   check "SUSFS" "no"
 fi
 
-# NTSYNC
-if lsmod 2>/dev/null | grep -q ntsync; then
+# NTSYNC (built-in or module)
+if [ -c /dev/ntsync ] 2>/dev/null; then
+  check "NTSYNC" "yes"
+elif lsmod 2>/dev/null | grep -q ntsync; then
   check "NTSYNC" "yes"
 else
   check "NTSYNC" "no"

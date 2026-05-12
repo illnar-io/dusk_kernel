@@ -9,7 +9,8 @@ runs:
         set -euo pipefail
 
         MODULE_SRC="${{ github.workspace }}/companion/module"
-        OUTPUT="${{ github.workspace }}/companion/dusk-companion-v1.0.zip"
+        VERSION=$(grep '^version=' "$MODULE_SRC/module.prop" 2>/dev/null | cut -d= -f2 | tr -d 'v' || echo "1.1")
+OUTPUT="${{ github.workspace }}/companion/dusk-companion-v${VERSION}.zip"
 
         if [ ! -d "$MODULE_SRC" ]; then
           echo "::warning::Companion module source not found at $MODULE_SRC"

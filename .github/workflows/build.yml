@@ -302,17 +302,6 @@ jobs:
     - name: Prepare AnyKernel3 Zip
       uses: ./.github/actions/prepare-anykernel3
 
-    - name: Prepare DUSK Companion Module
-      uses: ./.github/actions/prepare-companion
-
-    - name: Upload DUSK Companion Module
-      uses: actions/upload-artifact@v7
-      with:
-        name: ${{ steps.extract.outputs.file_name }}-DUSK-Companion
-        path: ${{ github.workspace }}/companion/dusk-companion-*.zip
-        if-no-files-found: ignore
-        compression-level: 0
-
     - name: Generate AnyKernel3 zip name
       id: zip_name
       shell: bash
