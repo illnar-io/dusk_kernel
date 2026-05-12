@@ -219,14 +219,50 @@ runs:
                 fi
               done
 
+              # Create a concatenated archive file but keep parts until extraction succeeds
               cat "${PARTS_ARRAY[@]}" > "$FINAL_ARCHIVE"
-              rm -f "${PARTS_ARRAY[@]}"
 
-              if [ "$COMPRESSED" = "true" ]; then
-                tar -I "zstd -d -T0" -xf "$FINAL_ARCHIVE" -C "$EXTRACT_DIR"
-              else
-                tar -xf "$FINAL_ARCHIVE" -C "$EXTRACT_DIR"
+              MAX_EXTRACT_ATTEMPTS=3
+              attempt=1
+              extracted=false
+              while [ $attempt -le $MAX_EXTRACT_ATTEMPTS ]; do
+                echo "Attempting extraction (attempt $attempt/$MAX_EXTRACT_ATTEMPTS)"
+                if [ "$COMPRESSED" = "true" ]; then
+                  if tar -I "zstd -d -T0" -xf "$FINAL_ARCHIVE" -C "$EXTRACT_DIR"; then
+                    extracted=true
+                    break
+                  fi
+                else
+                  if tar -xf "$FINAL_ARCHIVE" -C "$EXTRACT_DIR"; then
+                    extracted=true
+                    break
+                  fi
+                fi
+
+                echo "Extraction failed (possible truncated download)."
+                if [ $attempt -lt $MAX_EXTRACT_ATTEMPTS ]; then
+                  echo "Re-downloading split parts and retrying..."
+                  # redownload each part (overwrite)
+                  for part_file in "${PARTS_ARRAY[@]}"; do
+                    echo "  Re-downloading $part_file"
+                    if ! download_asset "$part_file" "$BASE_URL/$part_file"; then
+                      echo "::error::Failed to re-download $part_file"
+                      exit 1
+                    fi
+                  done
+                  # rebuild concatenated archive
+                  cat "${PARTS_ARRAY[@]}" > "$FINAL_ARCHIVE"
+                fi
+                attempt=$((attempt+1))
+              done
+
+              if [ "$extracted" = "false" ]; then
+                echo "::error::Extraction failed after $MAX_EXTRACT_ATTEMPTS attempts. Aborting."
+                exit 1
               fi
+
+              # cleanup parts and final archive after successful extraction
+              rm -f "${PARTS_ARRAY[@]}"
               rm -f "$FINAL_ARCHIVE"
             else
               if [ "$COMPRESSED" = "true" ]; then
