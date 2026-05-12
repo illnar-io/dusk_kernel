@@ -171,11 +171,28 @@ runs:
               
               while [ $attempt -le $max_retries ]; do
                 echo "  Attempt $attempt: Downloading $filename..."
-                
-                if timeout 10m aria2c "${ARIA2_OPTS[@]}" --retry-wait=10 --max-tries=10 -o "$filename" "$url"; then
-                  return 0
+                # Prefer gh release download (reliable and atomic) when available
+                rm -f "$filename"
+                if command -v gh >/dev/null 2>&1; then
+                  if timeout 10m gh release download "$TAG_NAME" --repo "$TARGET_REPO" --pattern "$filename" -D . >/dev/null 2>&1; then
+                    # gh writes the file with the same name into the current directory
+                    if [ -s "$filename" ]; then
+                      return 0
+                    fi
+                  fi
                 fi
-                
+
+                # Fallback to aria2c
+                if timeout 10m aria2c "${ARIA2_OPTS[@]}" --retry-wait=10 --max-tries=10 -o "$filename" "$url"; then
+                  # ensure file is non-empty
+                  if [ -s "$filename" ]; then
+                    return 0
+                  else
+                    echo "  ⚠️ Downloaded file is empty. Retrying..."
+                    rm -f "$filename"
+                  fi
+                fi
+
                 echo "  ⚠️ Download failed or timed out. Retrying in 5s..."
                 sleep 5
                 attempt=$((attempt + 1))
