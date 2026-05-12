@@ -61,6 +61,8 @@ runs:
       env:
         TARGET_REPO: "${{ github.repository }}"
       run: |
+        set -euo pipefail
+
         # Validate and parse inputs
         PATHS_INPUT="${{ inputs.cache_paths }}"
         KEYS_INPUT="${{ inputs.cache_keys }}"
@@ -210,13 +212,22 @@ runs:
                 echo "::error::Split archive parts not found for $FINAL_ARCHIVE"
                 exit 1
               fi
-              if [ "$COMPRESSED" = "true" ]; then
-                # Extract quietly (no verbose listing)
-                cat "${PARTS_ARRAY[@]}" | tar -I "zstd -d -T0" -xf - -C "$EXTRACT_DIR"
-              else
-                cat "${PARTS_ARRAY[@]}" | tar -xf - -C "$EXTRACT_DIR"
-              fi
+              for part_file in "${PARTS_ARRAY[@]}"; do
+                if [ ! -s "$part_file" ]; then
+                  echo "::error::Split archive part is missing or empty: $part_file"
+                  exit 1
+                fi
+              done
+
+              cat "${PARTS_ARRAY[@]}" > "$FINAL_ARCHIVE"
               rm -f "${PARTS_ARRAY[@]}"
+
+              if [ "$COMPRESSED" = "true" ]; then
+                tar -I "zstd -d -T0" -xf "$FINAL_ARCHIVE" -C "$EXTRACT_DIR"
+              else
+                tar -xf "$FINAL_ARCHIVE" -C "$EXTRACT_DIR"
+              fi
+              rm -f "$FINAL_ARCHIVE"
             else
               if [ "$COMPRESSED" = "true" ]; then
                 tar -I "zstd -d -T0" -xf "$FINAL_ARCHIVE" -C "$EXTRACT_DIR"
