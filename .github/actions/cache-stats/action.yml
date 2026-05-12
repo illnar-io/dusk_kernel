@@ -10,6 +10,39 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Define cache summary helper
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        set -euo pipefail
+        cat > /tmp/cache_summary.sh <<'EOF'
+        summarize_dir() {
+          local path="$1"
+          local top_n=${2:-10}
+          local sub_n=${3:-5}
+          if [ ! -e "$path" ]; then
+            echo "Path $path not found"
+            return
+          fi
+          echo "---------------"
+          echo "Summary: $path"
+          du -sh "$path" || true
+          echo "Top ${top_n} entries at top level:"
+          du -h --max-depth=1 "$path" 2>/dev/null | sort -hr | head -n "$top_n" || true
+          echo "Showing up to ${sub_n} entries one level deeper for the largest top-level items:"
+          while read -r line; do
+            entry_path=$(echo "$line" | awk '{print $2}')
+            [ -z "$entry_path" ] && continue
+            if [ "$entry_path" = "$path" ]; then
+              continue
+            fi
+            echo "-> $entry_path :"
+            du -h --max-depth=1 "$entry_path" 2>/dev/null | sort -hr | head -n "$sub_n" || true
+          done < <(du -h --max-depth=1 "$path" 2>/dev/null | sort -hr | head -n "$top_n")
+          echo "---------------"
+        }
+        EOF
+
     - name: Show ccache Stats
       shell: bash
       working-directory: ${{ github.workspace }}
@@ -73,30 +106,8 @@ runs:
       working-directory: ${{ github.workspace }}
       run: |
         set -euo pipefail
-        summarize_dir() {
-          local path="$1"
-          local top_n=${2:-10}
-          local sub_n=${3:-5}
-          if [ ! -e "$path" ]; then
-            echo "Path $path not found"
-            return
-          fi
-          echo "---------------"
-          echo "Summary: $path"
-          du -sh "$path" || true
-          echo "Top ${top_n} entries at top level:"
-          du -h --max-depth=1 "$path" 2>/dev/null | sort -hr | head -n $top_n || true
-          echo "\nShowing up to ${sub_n} entries one level deeper for the largest top-level items:"
-          while read -r size name; do
-            # skip the root entry which matches the path itself
-            if [ "${name%/}" = "${path%/}" ]; then
-              continue
-            fi
-            echo "-> $name :"
-            du -h --max-depth=1 "$name" 2>/dev/null | sort -hr | head -n $sub_n || true
-          done < <(du -h --max-depth=1 "$path" 2>/dev/null | sort -hr | head -n $top_n)
-          echo "---------------"
-        }
+        # shellcheck disable=SC1091
+        source /tmp/cache_summary.sh
 
         echo "==============="
         echo "=== .ccache ==="
@@ -108,6 +119,8 @@ runs:
       working-directory: ${{ github.workspace }}
       run: |
         set -euo pipefail
+        # shellcheck disable=SC1091
+        source /tmp/cache_summary.sh
         echo "===================="
         echo "=== .cache/bazel ==="
         echo "===================="
@@ -118,6 +131,8 @@ runs:
       working-directory: ${{ github.workspace }}
       run: |
         set -euo pipefail
+        # shellcheck disable=SC1091
+        source /tmp/cache_summary.sh
         echo "================="
         echo "=== .ld_cache ==="
         echo "================="

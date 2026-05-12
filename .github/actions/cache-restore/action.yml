@@ -114,7 +114,7 @@ runs:
           BASE_URL="https://github.com/${TARGET_REPO}/releases/download/$TAG_NAME"
           ASSETS_URL="https://github.com/${TARGET_REPO}/releases/expanded_assets/$TAG_NAME"
           
-          echo "::group:: [$((idx+1))/$${#PATHS_ARRAY[@]}] Cache: $CACHE_BUCKET - Fetching Asset List"
+          echo "::group:: [$((idx+1))/${#PATHS_ARRAY[@]}] Cache: $CACHE_BUCKET - Fetching Asset List"
           HTTP_RESPONSE=$(curl -sL -A "Mozilla/5.0" -w "%{http_code}" "$ASSETS_URL" -o assets.html || echo "404")
           
           if [ "$HTTP_RESPONSE" -eq 200 ]; then
@@ -139,7 +139,7 @@ runs:
           FOUND=false
           while read -r KEY; do
             [ -z "$KEY" ] && continue
-            echo "::group:: [$((idx+1))/$${#PATHS_ARRAY[@]}] Searching Prefix: $KEY"
+            echo "::group:: [$((idx+1))/${#PATHS_ARRAY[@]}] Searching Prefix: $KEY"
             
             MATCH=$(echo "$ALL_ASSETS" | grep "^cache-$KEY" | sort -r | head -n 1 || true)
             
@@ -159,7 +159,7 @@ runs:
             echo "✅ Hit! Restoring $BASE_FILENAME$EXT"
             echo "::endgroup::"
             
-            echo "::group:: [$((idx+1))/$${#PATHS_ARRAY[@]}] Downloading Cache"
+            echo "::group:: [$((idx+1))/${#PATHS_ARRAY[@]}] Downloading Cache"
             
             download_asset() {
               local filename="$1"
@@ -199,20 +199,24 @@ runs:
             fi
             echo "::endgroup::"
             
-            echo "::group:: [$((idx+1))/$${#PATHS_ARRAY[@]}] Extracting Cache"
+            echo "::group:: [$((idx+1))/${#PATHS_ARRAY[@]}] Extracting Cache"
             mkdir -p "$CACHE_PATH"
             FINAL_ARCHIVE="$BASE_FILENAME$EXT"
             EXTRACT_DIR="$(dirname "$CACHE_PATH")"
             
             if [ "$IS_SPLIT" = "true" ]; then
-              PARTS=$(ls "$FINAL_ARCHIVE.part"* | sort)
+              mapfile -t PARTS_ARRAY < <(printf '%s\n' "$FINAL_ARCHIVE".part* | sort)
+              if [ ${#PARTS_ARRAY[@]} -eq 0 ] || [ ! -e "${PARTS_ARRAY[0]}" ]; then
+                echo "::error::Split archive parts not found for $FINAL_ARCHIVE"
+                exit 1
+              fi
               if [ "$COMPRESSED" = "true" ]; then
                 # Extract quietly (no verbose listing)
-                cat $PARTS | tar -I "zstd -d -T0" -xf - -C "$EXTRACT_DIR"
+                cat "${PARTS_ARRAY[@]}" | tar -I "zstd -d -T0" -xf - -C "$EXTRACT_DIR"
               else
-                cat $PARTS | tar -xf - -C "$EXTRACT_DIR"
+                cat "${PARTS_ARRAY[@]}" | tar -xf - -C "$EXTRACT_DIR"
               fi
-              rm -f $PARTS
+              rm -f "${PARTS_ARRAY[@]}"
             else
               if [ "$COMPRESSED" = "true" ]; then
                 tar -I "zstd -d -T0" -xf "$FINAL_ARCHIVE" -C "$EXTRACT_DIR"
