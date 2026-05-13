@@ -8,18 +8,20 @@ runs:
       run: |
         set -euo pipefail
 
-        # BBG's genheaders needs 'ld' in PATH.  The runner has ld.lld
-        # (from LLVM) but NOT 'ld'.  Create a symlink in /usr/local/bin
-        # (always on PATH) so clang can find it.
+        # clang needs 'ld' on PATH.  The runner has ld.lld (from LLVM) but
+        # NOT 'ld'.  The legacy build system (build/build.sh) resets PATH
+        # and strips /usr/local/bin, so we symlink into /usr/bin/ too.
+        # We also install binutils (ld.bfd) as a reliable system fallback.
         mkdir -p /usr/local/bin
         for SRC in /usr/lib/llvm-*/bin/ld.lld $(command -v ld.lld 2>/dev/null || true); do
           [ -x "$SRC" ] || continue
           ln -sf "$SRC" /usr/local/bin/ld
-          echo "→ /usr/local/bin/ld -> $SRC"
+          ln -sf "$SRC" /usr/bin/ld
+          echo "→ ld symlinks -> $SRC"
           break
         done
         if ! command -v ld >/dev/null; then
-          echo "::error::'ld' not found.  Installing binutils as fallback."
+          echo "::error::'ld' still not found.  Installing binutils as last resort."
           sudo apt-get update -qq
           sudo apt-get install -y -qq binutils
           command -v ld >/dev/null || { echo "::error::'ld' still not found"; exit 1; }
