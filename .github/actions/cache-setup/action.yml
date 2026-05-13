@@ -136,8 +136,15 @@ runs:
         chmod +x "${{ github.workspace }}/kernel/common/ld-wrapper"
 
         # Setup cache directories
-        echo "LD=${{ github.workspace }}/kernel/common/ld-wrapper" >> "$GITHUB_ENV"
-        echo "HOSTLD=${{ github.workspace }}/kernel/common/ld-wrapper" >> "$GITHUB_ENV"
+        # Only set LD for Kleaf builds (a14-5.15, a14-6.1, a15-6.6, a16-6.12).
+        # Legacy build.sh (5.10, a13-5.15) manages its own toolchain linker and
+        # LLVM-16's ld.lld is incompatible with kernel 5.10's KVM nVHE inline asm.
+        case "${{ inputs.android_version }}-${{ inputs.kernel_version }}" in
+          android14-5.15|android14-6.1|android15-6.6|android16-6.12)
+            echo "LD=${{ github.workspace }}/kernel/common/ld-wrapper" >> "$GITHUB_ENV"
+            echo "HOSTLD=${{ github.workspace }}/kernel/common/ld-wrapper" >> "$GITHUB_ENV"
+            ;;
+        esac
 
         echo "✅ LD Cache ready"
         echo "LDCACHE_DIR: $LDCACHE_DIR"
