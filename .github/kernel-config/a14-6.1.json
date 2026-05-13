@@ -1,13 +1,5 @@
 {
   "include": [
-    {"kernel_version": "6.1.25-android14-2023-06"},
-    {"kernel_version": "6.1.25-android14-2023-07"},
-    {"kernel_version": "6.1.25-android14-2023-08"},
-    {"kernel_version": "6.1.25-android14-2023-09"},
-    {"kernel_version": "6.1.25-android14-2023-10"},
-    {"kernel_version": "6.1.43-android14-2023-11"},
-    {"kernel_version": "6.1.57-android14-2023-12"},
-    {"kernel_version": "6.1.57-android14-2024-01"},
     {"kernel_version": "6.1.68-android14-2024-02"},
     {"kernel_version": "6.1.68-android14-2024-03"},
     {"kernel_version": "6.1.75-android14-2024-04"},
