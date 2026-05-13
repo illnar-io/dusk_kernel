@@ -10,22 +10,19 @@ runs:
 
         # clang needs 'ld' on PATH.  The runner has ld.lld (from LLVM) but
         # NOT 'ld'.  The legacy build system (build/build.sh) resets PATH
-        # and strips /usr/local/bin, so we symlink into /usr/bin/ too.
-        # We also install binutils (ld.bfd) as a reliable system fallback.
+        # and strips /usr/local/bin where our ld.lld symlink lives, so we
+        # install binutils which provides ld.bfd in /usr/bin/ (never stripped).
         mkdir -p /usr/local/bin
         for SRC in /usr/lib/llvm-*/bin/ld.lld $(command -v ld.lld 2>/dev/null || true); do
           [ -x "$SRC" ] || continue
           ln -sf "$SRC" /usr/local/bin/ld
-          ln -sf "$SRC" /usr/bin/ld
-          echo "→ ld symlinks -> $SRC"
+          echo "→ /usr/local/bin/ld -> $SRC"
           break
         done
-        if ! command -v ld >/dev/null; then
-          echo "::error::'ld' still not found.  Installing binutils as last resort."
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq binutils
-          command -v ld >/dev/null || { echo "::error::'ld' still not found"; exit 1; }
-        fi
+        # Install binutils so /usr/bin/ld exists even when PATH strips /usr/local/bin
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq binutils
+        command -v ld >/dev/null || { echo "::error::'ld' still not found"; exit 1; }
 
         mkdir -p "${{ github.workspace }}/kernel"
         mkdir -p "${{ github.workspace }}/git-repo"
