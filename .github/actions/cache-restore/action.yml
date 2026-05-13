@@ -143,7 +143,7 @@ runs:
             [ -z "$KEY" ] && continue
             echo "::group:: [$((idx+1))/${#PATHS_ARRAY[@]}] Searching Prefix: $KEY"
             
-            MATCH=$(echo "$ALL_ASSETS" | grep "^cache-$KEY" | sort -r | head -n 1 || true)
+            MATCH=$(echo "$ALL_ASSETS" | grep -E "^cache-$KEY.*\.(tzst|tar)(\.part[a-z]{2})?$" | sort -r | head -n 1 || true)
             
             if [ -z "$MATCH" ]; then
                 echo "Not found."
