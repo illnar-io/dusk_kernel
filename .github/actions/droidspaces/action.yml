@@ -53,4 +53,6 @@ runs:
           echo 'CONFIG_PID_NS=y' >> "$FRAGMENT"
         else
           echo "  ⚠ skipping CONFIG_IPC_NS and CONFIG_PID_NS (not compatible on kernel 5.10)" >&2
+          echo '# CONFIG_IPC_NS is not set' >> "$FRAGMENT"
+          echo '# CONFIG_PID_NS is not set' >> "$FRAGMENT"
         fi

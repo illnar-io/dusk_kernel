@@ -292,10 +292,13 @@ runs:
       working-directory: ${{ github.workspace }}/kernel/common
       run: |
         echo "Applying 6.12 SUSFS fixes"
-        #if [ "${{ inputs.sublevel }}" -le "77" ]; then
-        #  echo "Applying exec.c Android 16 6.12 Fake Patch"
-        #  sed -i '/^#include <linux\/dma-buf.h>$/d' fs/exec.c
-        #fi
+        # The 50_add patch for 6.12 references susfs_is_current_proc_umounted()
+        # in fs/exec.c, but include/linux/susfs.h from the 6.12 branch may not
+        # carry the declaration. Ensure a compatible declaration exists.
+        if ! grep -q "susfs_is_current_proc_umounted" include/linux/susfs.h 2>/dev/null; then
+          echo "→ Adding susfs_is_current_proc_umounted declaration"
+          echo "extern bool susfs_is_current_proc_umounted(void);" >> include/linux/susfs.h
+        fi
 
     - name: Apply Kernel SUSFS Patches
       shell: bash
