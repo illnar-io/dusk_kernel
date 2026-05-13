@@ -14,25 +14,24 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}/kernel
       run: |
+        FRAGMENT="${{ github.workspace }}/wild_gki.fragment"
         # Only add CONFIG_BBG if the Kconfig was installed by setup.sh
         if grep -rq "config BBG\b" common 2>/dev/null; then
-          echo "CONFIG_BBG=y" >> "${{ github.workspace }}/wild_gki.fragment"
-          # Modify security Kconfig to include baseband_guard in LSM
-          sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' common/security/Kconfig 2>/dev/null || true
-          echo "✓ BBG configured"
+          echo "CONFIG_BBG=y" >> "$FRAGMENT"
+          # Append baseband_guard to CONFIG_LSM in the fragment.
+          # The defconfig (or Kconfig default) sets CONFIG_LSM without baseband_guard,
+          # and BBG's Makefile aborts if CONFIG_LSM doesn't include it.
+          # Try reading from gki_defconfig first, otherwise use the standard default.
+          DEFCONFIG="${{ github.workspace }}/kernel/common/arch/arm64/configs/gki_defconfig"
+          if grep -q "^CONFIG_LSM=" "$DEFCONFIG" 2>/dev/null; then
+            CURRENT_LSM=$(grep "^CONFIG_LSM=" "$DEFCONFIG" | cut -d= -f2 | tr -d '"')
+            echo "CONFIG_LSM=\"${CURRENT_LSM},baseband_guard\"" >> "$FRAGMENT"
+          else
+            echo 'CONFIG_LSM="landlock,lockdown,yama,loadpin,safesetid,integrity,selinux,smack,tomoyo,apparmor,bpf,baseband_guard"' >> "$FRAGMENT"
+          fi
+          echo "✓ BBG configured (CONFIG_BBG=y + baseband_guard in CONFIG_LSM)"
         else
           echo "⚠ BBG Kconfig not found in kernel tree, skipping" >&2
-        fi
-    
-    - name: Verify BBG Installation
-      shell: bash
-      working-directory: ${{ github.workspace }}/kernel
-      run: |
-        if grep -q "baseband_guard" common/security/Kconfig 2>/dev/null; then
-          echo "✓ SUCCESS: baseband_guard found in common/security/Kconfig"
-          grep -n "baseband_guard" common/security/Kconfig || true
-        else
-          echo "⚠ BBG Kconfig not found or LSM integration skipped (kernel may not support LSM list modification)" >&2
         fi
     
     - name: Extract BBG Version
