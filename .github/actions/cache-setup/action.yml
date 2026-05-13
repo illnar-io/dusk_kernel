@@ -114,14 +114,24 @@ runs:
       working-directory: ${{ github.workspace }}
       run: |
         set -euo pipefail
+        # The legacy build system (build/build.sh) may reset PATH and strip
+        # /usr/local/bin, where setup-build-environment installed the ld symlink.
+        # Explicitly re-add it so clang can find 'ld' for host tool linking.
+        echo "/usr/local/bin" >> "$GITHUB_PATH"
         export LDCACHE_DIR="/home/runner/.ld_cache"
         echo "LDCACHE_DIR=$LDCACHE_DIR" >> $GITHUB_ENV
         mkdir -p "$LDCACHE_DIR"
           
         # Create LD wrapper for thin-LTO caching
-        cat > "${{ github.workspace }}/kernel/common/ld-wrapper" << 'EOF'
+        # Use full path to ld.lld because the legacy build system may strip
+        # /usr/local/bin from PATH (where our ld.lld symlink lives).
+        LD_LLD=$(command -v ld.lld 2>/dev/null || echo "/usr/lib/llvm-*/bin/ld.lld")
+        if [ ! -x "$LD_LLD" ]; then
+          LD_LLD=$(ls /usr/lib/llvm-*/bin/ld.lld 2>/dev/null | head -1)
+        fi
+        cat > "${{ github.workspace }}/kernel/common/ld-wrapper" << EOF
         #!/bin/bash
-        ld.lld "$@" --thinlto-cache-dir="$LDCACHE_DIR" --thinlto-jobs="$(nproc --all)"
+        exec ${LD_LLD} "\$@" --thinlto-cache-dir="\$LDCACHE_DIR" --thinlto-jobs="\$(nproc --all)"
         EOF
         chmod +x "${{ github.workspace }}/kernel/common/ld-wrapper"
 
