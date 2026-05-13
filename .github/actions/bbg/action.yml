@@ -9,6 +9,23 @@ runs:
       working-directory: ${{ github.workspace }}/kernel
       run: |
         wget -O- https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh | bash
+
+    - name: Fix BBG genheaders linker
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel/common
+      run: |
+        # BBG's Makefile compiles genheaders with $(HOSTCC) (clang).
+        # Clang searches for 'ld' but the prebuilt LLVM toolchain only has
+        # ld.lld.  Add -fuse-ld=lld so it uses ld.lld explicitly.
+        MAKEFILE="security/baseband-guard/Makefile"
+        if [ -f "$MAKEFILE" ] && ! grep -q "fuse-ld" "$MAKEFILE"; then
+          sed -i '/\$(HOSTCC)/s/\$(HOSTCC)/$(HOSTCC) -fuse-ld=lld/' "$MAKEFILE"
+          echo "✓ Patched BBG Makefile to use ld.lld for genheaders"
+        elif [ -f "$MAKEFILE" ]; then
+          echo "✓ BBG Makefile already patched for ld"
+        else
+          echo "⚠ BBG Makefile not found at $MAKEFILE" >&2
+        fi
     
     - name: Configure Baseband Guard
       shell: bash
