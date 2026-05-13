@@ -61,9 +61,6 @@ runs:
 
         # ZRAM: module + zstd default (multi-compression built-in on 6.1.157+)
         CONFIG_ZRAM=m
-        # CONFIG_ZRAM_DEF_COMP_LZORLE is not set
-        CONFIG_ZRAM_DEF_COMP_ZSTD=y
-        CONFIG_ZRAM_DEF_COMP="zstd"
 
         # RCU_LAZY: activate by default (was DEFAULT_OFF)
         # CONFIG_RCU_LAZY_DEFAULT_OFF is not set
@@ -83,6 +80,18 @@ runs:
         CONFIG_F2FS_FS_LZORLE=y
         CONFIG_F2FS_UNFAIR_RWSEM=y
         EOF
+
+        # ZRAM default compression algorithm - guard by Kconfig existence
+        if grep -rq "config ZRAM_DEF_COMP_ZSTD\b" "$KERNEL_COMMON" 2>/dev/null; then
+            echo '# CONFIG_ZRAM_DEF_COMP_LZORLE is not set' >> "$FRAGMENT"
+            echo 'CONFIG_ZRAM_DEF_COMP_ZSTD=y' >> "$FRAGMENT"
+            echo 'CONFIG_ZRAM_DEF_COMP="zstd"' >> "$FRAGMENT"
+        elif grep -rq "config ZRAM_DEF_COMP\b" "$KERNEL_COMMON" 2>/dev/null; then
+            CONFIG_ZRAM_DEF_COMP=$(grep -rA5 "config ZRAM_DEF_COMP\b" "$KERNEL_COMMON" --include="Kconfig" 2>/dev/null)
+            if echo "$CONFIG_ZRAM_DEF_COMP" | grep -q "string"; then
+                echo 'CONFIG_ZRAM_DEF_COMP="zstd"' >> "$FRAGMENT"
+            fi
+        fi
 
         # Trim unused symbols - disable only if GKI allows it.
         # On a16-6.12 the Kconfig defaults TRIM_UNUSED_KSYMS to y regardless

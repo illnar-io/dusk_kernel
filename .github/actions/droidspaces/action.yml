@@ -21,11 +21,11 @@ runs:
         fi
         
         echo "Applying kABI fix from: $PATCH_FILE"
-        if patch -p1 < "$PATCH_FILE"; then
+        if patch -p1 --dry-run < "$PATCH_FILE" 2>/dev/null; then
+          patch -p1 < "$PATCH_FILE"
           echo "Applied SYSVIPC kABI fix from local patch"
         else
-          echo "ERROR: Failed to apply kABI fix"
-          exit 1
+          echo "⚠ SYSVIPC kABI fix doesn't apply on this kernel version, skipping" >&2
         fi
 
     - name: Enable Configs
