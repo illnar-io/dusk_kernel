@@ -24,6 +24,15 @@ runs:
         sudo apt-get install -y -qq binutils
         command -v ld >/dev/null || { echo "::error::'ld' still not found"; exit 1; }
 
+        # clang looks for ld in its InstalledDir (e.g. /usr/lib/llvm-12/bin/ld)
+        # before falling back to PATH.  Make sure each LLVM version's bin dir
+        # has an ld symlink so genheaders and similar tools work.
+        for dir in /usr/lib/llvm-*/bin; do
+          [ -d "$dir" ] || continue
+          [ -x "$dir/ld" ] && continue
+          sudo ln -sf /usr/bin/ld "$dir/ld" 2>/dev/null && echo "→ $dir/ld -> /usr/bin/ld"
+        done
+
         mkdir -p "${{ github.workspace }}/kernel"
         mkdir -p "${{ github.workspace }}/git-repo"
         curl -L https://storage.googleapis.com/git-repo-downloads/repo -o "${{ github.workspace }}/git-repo/repo"
