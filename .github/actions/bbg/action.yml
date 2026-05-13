@@ -16,7 +16,8 @@ runs:
       run: |
         FRAGMENT="${{ github.workspace }}/wild_gki.fragment"
         # Only add CONFIG_BBG if the Kconfig was installed by setup.sh
-        if grep -rq "config BBG\b" common 2>/dev/null; then
+        # Use -R to follow symlinks (BBG Kconfig lives via common/security/baseband-guard → Baseband-guard)
+        if grep -Rq "config BBG\b" common 2>/dev/null; then
           echo "CONFIG_BBG=y" >> "$FRAGMENT"
           # Append baseband_guard to CONFIG_LSM in the fragment.
           # The defconfig (or Kconfig default) sets CONFIG_LSM without baseband_guard,

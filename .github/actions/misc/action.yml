@@ -50,9 +50,6 @@ runs:
         CONFIG_KALLSYMS=y
         CONFIG_KALLSYMS_ALL=y
 
-        # User Namespaces (required for Droidspaces, containers, and ntsync)
-        CONFIG_USER_NS=y
-
         # === Phase 1 — DUSK Kernel Report improvements ===
 
         # MGLRU (Multi-Gen LRU) for better memory management on 6-8GB RAM
@@ -80,6 +77,15 @@ runs:
         CONFIG_F2FS_FS_LZORLE=y
         CONFIG_F2FS_UNFAIR_RWSEM=y
         EOF
+
+        # User Namespaces (required for Droidspaces, containers, and ntsync)
+        # Skip on 5.10 — Android GKI 5.10 has header stubs that conflict with
+        # real implementations when CONFIG_USER_NS is enabled.
+        if [ "${{ inputs.kernel_version }}" != "5.10" ]; then
+            echo 'CONFIG_USER_NS=y' >> "$FRAGMENT"
+        else
+            echo "  ⚠ skipping CONFIG_USER_NS (not compatible on kernel 5.10)" >&2
+        fi
 
         # ZRAM default compression algorithm - guard by Kconfig existence
         if grep -rq "config ZRAM_DEF_COMP_ZSTD\b" "$KERNEL_COMMON" 2>/dev/null; then
