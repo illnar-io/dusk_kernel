@@ -15,19 +15,34 @@ on:
           - Pre-Release
           - Release
         default: Action
-      kernel_build_version:
-        description: "Kernel Version"
-        type: choice
-        options:
-          - All
-          - a12-5-10
-          - a13-5-10
-          - a13-5-15
-          - a14-5-15
-          - a14-6-1
-          - a15-6-6
-          - a16-6-12
-        default: All
+      build_a12_5_10:
+        description: "Android 12 - 5.10"
+        type: boolean
+        default: false
+      build_a13_5_10:
+        description: "Android 13 - 5.10"
+        type: boolean
+        default: false
+      build_a13_5_15:
+        description: "Android 13 - 5.15"
+        type: boolean
+        default: false
+      build_a14_5_15:
+        description: "Android 14 - 5.15"
+        type: boolean
+        default: false
+      build_a14_6_1:
+        description: "Android 14 - 6.1"
+        type: boolean
+        default: false
+      build_a15_6_6:
+        description: "Android 15 - 6.6"
+        type: boolean
+        default: false
+      build_a16_6_12:
+        description: "Android 16 - 6.12"
+        type: boolean
+        default: false
       root:
         description: "Root solution"
         type: choice
@@ -63,7 +78,7 @@ on:
 
 jobs:
   build-a12-5-10:
-    if: ${{ inputs.kernel_build_version == 'All' || inputs.kernel_build_version == 'a12-5-10' }}
+    if: inputs.build_a12_5_10
     uses: ./.github/workflows/prepare.yml
     with:
       config_file: .github/kernel-config/a12-5.10.json
@@ -75,7 +90,7 @@ jobs:
     secrets: inherit
 
   build-a13-5-10:
-    if: ${{ inputs.kernel_build_version == 'All' || inputs.kernel_build_version == 'a13-5-10' }}
+    if: inputs.build_a13_5_10
     uses: ./.github/workflows/prepare.yml
     with:
       config_file: .github/kernel-config/a13-5.10.json
@@ -87,7 +102,7 @@ jobs:
     secrets: inherit
 
   build-a13-5-15:
-    if: ${{ inputs.kernel_build_version == 'All' || inputs.kernel_build_version == 'a13-5-15' }}
+    if: inputs.build_a13_5_15
     uses: ./.github/workflows/prepare.yml
     with:
       config_file: .github/kernel-config/a13-5.15.json
@@ -99,7 +114,7 @@ jobs:
     secrets: inherit
 
   build-a14-5-15:
-    if: ${{ inputs.kernel_build_version == 'All' || inputs.kernel_build_version == 'a14-5-15' }}
+    if: inputs.build_a14_5_15
     uses: ./.github/workflows/prepare.yml
     with:
       config_file: .github/kernel-config/a14-5.15.json
@@ -111,7 +126,7 @@ jobs:
     secrets: inherit
 
   build-a14-6-1:
-    if: ${{ inputs.kernel_build_version == 'All' || inputs.kernel_build_version == 'a14-6-1' }}
+    if: inputs.build_a14_6_1
     uses: ./.github/workflows/prepare.yml
     with:
       config_file: .github/kernel-config/a14-6.1.json
@@ -123,7 +138,7 @@ jobs:
     secrets: inherit
 
   build-a15-6-6:
-    if: ${{ inputs.kernel_build_version == 'All' || inputs.kernel_build_version == 'a15-6-6' }}
+    if: inputs.build_a15_6_6
     uses: ./.github/workflows/prepare.yml
     with:
       config_file: .github/kernel-config/a15-6.6.json
@@ -135,7 +150,7 @@ jobs:
     secrets: inherit
 
   build-a16-6-12:
-    if: ${{ inputs.kernel_build_version == 'All' || inputs.kernel_build_version == 'a16-6-12' }}
+    if: inputs.build_a16_6_12
     uses: ./.github/workflows/prepare.yml
     with:
       config_file: .github/kernel-config/a16-6.12.json
@@ -254,28 +269,24 @@ jobs:
         set -euo pipefail
 
         failed=0
-        current_type="${{ inputs.kernel_build_version }}"
 
-        check_selected() {
-          local target="$1"
+        validate() {
+          local checked="$1"
           local job_name="$2"
           local result="$3"
-          
-          if [[ "$current_type" == "all" || "$current_type" == "$target" ]]; then
-            if [[ "$result" != "success" ]]; then
-              echo "Required job $job_name did not succeed (result: $result)"
-              failed=1
-            fi
+          if [[ "$checked" == "true" && "$result" != "success" ]]; then
+            echo "Required job $job_name did not succeed (result: $result)"
+            failed=1
           fi
         }
 
-        check_selected "a12-5-10" "build-a12-5-10" "${{ needs.build-a12-5-10.result }}"
-        check_selected "a13-5-10" "build-a13-5-10" "${{ needs.build-a13-5-10.result }}"
-        check_selected "a13-5-15" "build-a13-5-15" "${{ needs.build-a13-5-15.result }}"
-        check_selected "a14-5-15" "build-a14-5-15" "${{ needs.build-a14-5-15.result }}"
-        check_selected "a14-6-1" "build-a14-6-1" "${{ needs.build-a14-6-1.result }}"
-        check_selected "a15-6-6" "build-a15-6-6" "${{ needs.build-a15-6-6.result }}"
-        check_selected "a16-6-12" "build-a16-6-12" "${{ needs.build-a16-6-12.result }}"
+        validate "${{ inputs.build_a12_5_10 }}" "build-a12-5-10" "${{ needs.build-a12-5-10.result }}"
+        validate "${{ inputs.build_a13_5_10 }}" "build-a13-5-10" "${{ needs.build-a13-5-10.result }}"
+        validate "${{ inputs.build_a13_5_15 }}" "build-a13-5-15" "${{ needs.build-a13-5-15.result }}"
+        validate "${{ inputs.build_a14_5_15 }}" "build-a14-5-15" "${{ needs.build-a14-5-15.result }}"
+        validate "${{ inputs.build_a14_6_1 }}" "build-a14-6-1" "${{ needs.build-a14-6-1.result }}"
+        validate "${{ inputs.build_a15_6_6 }}" "build-a15-6-6" "${{ needs.build-a15-6-6.result }}"
+        validate "${{ inputs.build_a16_6_12 }}" "build-a16-6-12" "${{ needs.build-a16-6-12.result }}"
 
         if [[ "$failed" -ne 0 ]]; then
           exit 1
