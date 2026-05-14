@@ -258,6 +258,7 @@ jobs:
         clear_stats: false
 
     - name: Save build caches (ccache, bazel, bazel-disk, lto)
+      continue-on-error: true
       uses: ./.github/actions/cache-save
       with:
         cache_paths: |
