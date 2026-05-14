@@ -104,6 +104,26 @@ runs:
           echo "NTSYNC entry already present in Makefile"
         fi
 
+    - name: Add ntsync module to BUILD.bazel module_outs
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel/common
+      run: |
+        set -euo pipefail
+        if [ ! -f "BUILD.bazel" ]; then
+          echo "⚠ BUILD.bazel not found, skipping module_outs setup"
+          exit 0
+        fi
+        if grep -q 'drivers/misc/ntsync.ko' BUILD.bazel 2>/dev/null; then
+          echo "ntsync.ko already in module_outs"
+          exit 0
+        fi
+        if ! grep -q 'module_outs' BUILD.bazel 2>/dev/null; then
+          echo "⚠ module_outs not found in BUILD.bazel, skipping"
+          exit 0
+        fi
+        perl -i -pe 's/(module_outs\s*=\s*\[)/$1\n        "drivers\/misc\/ntsync.ko",/' BUILD.bazel
+        echo "✅ Added drivers/misc/ntsync.ko to module_outs"
+
     - name: Enable NTSYNC config
       shell: bash
       working-directory: ${{ github.workspace }}/kernel

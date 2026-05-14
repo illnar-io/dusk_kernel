@@ -293,11 +293,16 @@ runs:
       run: |
         echo "Applying 6.12 SUSFS fixes"
         # The 50_add patch for 6.12 references susfs_is_current_proc_umounted()
-        # in fs/exec.c, but include/linux/susfs.h from the 6.12 branch may not
-        # carry the declaration. Ensure a compatible declaration exists.
+        # in fs/exec.c, but the hunk that adds the include of linux/susfs.h may
+        # fail to apply on some sublevels. Ensure both the include in exec.c and
+        # the declaration in susfs.h exist before the 50_add patch runs.
         if ! grep -q "susfs_is_current_proc_umounted" include/linux/susfs.h 2>/dev/null; then
           echo "→ Adding susfs_is_current_proc_umounted declaration"
           echo "extern bool susfs_is_current_proc_umounted(void);" >> include/linux/susfs.h
+        fi
+        if ! grep -q '#include <linux/susfs.h>' fs/exec.c 2>/dev/null; then
+          echo "→ Adding #include <linux/susfs.h> to fs/exec.c"
+          sed -i '1i #include <linux/susfs.h>' fs/exec.c
         fi
 
     - name: Apply Kernel SUSFS Patches
