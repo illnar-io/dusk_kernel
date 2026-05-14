@@ -27,7 +27,8 @@ echo ""
 check "KernelSU-Next" "$([ -d /data/adb/ksu ] && echo yes || echo no)"
 
 # SUSFS
-check "SUSFS" "$(dmesg 2>/dev/null | grep -q 'KernelSU.*susfs' && echo yes || echo no)"
+susfs_check() { [ -e /proc/ksud ] && ksud debug 2>/dev/null | grep -qi susfs && echo yes || echo no; }
+check "SUSFS" "$(susfs_check)"
 
 # NTSYNC
 if [ -c /dev/ntsync ] 2>/dev/null; then

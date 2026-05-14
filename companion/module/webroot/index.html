@@ -13,21 +13,23 @@
     <p class="subtitle">Companion v2.0</p>
   </header>
 
+  <div id="api-status" class="api-warn">Connecting to KSU API...</div>
+
   <section class="card" id="status-card">
     <h2>Status</h2>
     <div id="status-content">
-      <div class="status-row"><span class="label">Kernel</span><span id="kernel-version" class="value">...</span></div>
-      <div class="status-row"><span class="label">KSU</span><span id="ksu-status" class="value badge">...</span></div>
-      <div class="status-row"><span class="label">SUSFS</span><span id="susfs-status" class="value badge">...</span></div>
-      <div class="status-row"><span class="label">NTSYNC</span><span id="ntsync-status" class="value badge">...</span></div>
-      <div class="status-row"><span class="label">CPU Gov</span><span id="cpu-gov" class="value">...</span></div>
-      <div class="status-row"><span class="label">GPU Gov</span><span id="gpu-gov" class="value">...</span></div>
-      <div class="status-row"><span class="label">TCP CC</span><span id="tcp-cc" class="value">...</span></div>
-      <div class="status-row"><span class="label">I/O Sched</span><span id="io-sched" class="value">...</span></div>
-      <div class="status-row"><span class="label">ZRAM</span><span id="zram-info" class="value">...</span></div>
-      <div class="status-row"><span class="label">Thermal</span><span id="thermal-temp" class="value">...</span></div>
+      <div class="status-row"><span class="label">Kernel</span><span id="kernel-version" class="value">—</span></div>
+      <div class="status-row"><span class="label">KSU</span><span id="ksu-status" class="value">—</span></div>
+      <div class="status-row"><span class="label">SUSFS</span><span id="susfs-status" class="value">—</span></div>
+      <div class="status-row"><span class="label">NTSYNC</span><span id="ntsync-status" class="value">—</span></div>
+      <div class="status-row"><span class="label">CPU Gov</span><span id="cpu-gov" class="value">—</span></div>
+      <div class="status-row"><span class="label">GPU Gov</span><span id="gpu-gov" class="value">—</span></div>
+      <div class="status-row"><span class="label">TCP CC</span><span id="tcp-cc" class="value">—</span></div>
+      <div class="status-row"><span class="label">I/O Sched</span><span id="io-sched" class="value">—</span></div>
+      <div class="status-row"><span class="label">ZRAM</span><span id="zram-info" class="value">—</span></div>
+      <div class="status-row"><span class="label">Thermal</span><span id="thermal-temp" class="value">—</span></div>
     </div>
-    <button onclick="refreshStatus()" class="btn btn-secondary">Refresh</button>
+    <button id="btn-refresh" onclick="refreshStatus()" class="btn btn-secondary">Refresh</button>
   </section>
 
   <section class="card">
@@ -35,10 +37,10 @@
     <div class="mode-grid">
       <button onclick="setMode('balanced')" class="mode-btn" data-mode="balanced">Balanced</button>
       <button onclick="setMode('performance')" class="mode-btn" data-mode="performance">Performance</button>
-      <button onclick="setMode('powersave')" class="mode-btn" data-mode="powersave">Battery Saver</button>
+      <button onclick="setMode('powersave')" class="mode-btn" data-mode="powersave">Battery</button>
       <button onclick="setMode('gaming')" class="mode-btn" data-mode="gaming">Gaming</button>
     </div>
-    <p class="hint" id="current-mode">Current: loading...</p>
+    <p class="hint" id="current-mode">Current: —</p>
   </section>
 
   <section class="card">
@@ -59,11 +61,18 @@
 
   <section class="card">
     <h2>Apply Now</h2>
-    <button onclick="applySettings()" class="btn btn-primary">Re-apply All Settings</button>
+    <button id="btn-apply" onclick="applySettings()" class="btn btn-primary">Re-apply All Settings</button>
+  </section>
+
+  <section class="card" id="log-card">
+    <h2>Log</h2>
+    <div id="log-content" class="log-box">
+      <div class="log-line info">WebUI loaded</div>
+    </div>
   </section>
 
   <footer>
-    <p class="footer-text">DUSK Kernel Companion — <span id="footer-mode">balanced</span></p>
+    <p class="footer-text">DUSK Kernel Companion</p>
   </footer>
 </div>
 <script src="app.js"></script>

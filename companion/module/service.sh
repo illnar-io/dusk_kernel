@@ -201,7 +201,7 @@ log "=== DUSK Companion v2.0 applied ==="
 MODULE_PROP="/data/adb/modules/dusk_companion/module.prop"
 
 ksu()      { [ -d /data/adb/ksu ] && echo "yes" || echo "no"; }
-susfs()    { dmesg 2>/dev/null | grep -q "KernelSU.*susfs" && echo "yes" || echo "no"; }
+susfs()    { ([ -e /proc/ksud ] && ksud debug 2>/dev/null | grep -qi susfs) && echo "yes" || echo "no"; }
 ntsync()   { [ -c /dev/ntsync ] 2>/dev/null && echo "yes" || { lsmod 2>/dev/null | grep -q ntsync && echo "yes" || echo "no"; }; }
 sched()    { [ "$(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor 2>/dev/null)" = "$CPU_GOV" ] && echo "yes" || echo "no"; }
 gpu_gov()  { g=$(cat /sys/class/devfreq/*/governor 2>/dev/null | head -1); [ "$g" = "$GPU_GOVERNOR" ] && echo "yes" || echo "no"; }
