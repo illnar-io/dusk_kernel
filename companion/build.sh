@@ -2,7 +2,7 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/module"
-OUTPUT="../dusk-companion-v1.1.zip"
+OUTPUT="../dusk-companion-v2.0.zip"
 rm -f "$OUTPUT"
 zip -r9 "$OUTPUT" . -x '*.git*'
 echo "✅ Companion module built: $(ls -lh "$OUTPUT" | awk '{print $5}')"

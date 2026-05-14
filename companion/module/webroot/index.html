@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DUSK Companion</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>DUSK Kernel</h1>
+    <p class="subtitle">Companion v2.0</p>
+  </header>
+
+  <section class="card" id="status-card">
+    <h2>Status</h2>
+    <div id="status-content">
+      <div class="status-row"><span class="label">Kernel</span><span id="kernel-version" class="value">...</span></div>
+      <div class="status-row"><span class="label">KSU</span><span id="ksu-status" class="value badge">...</span></div>
+      <div class="status-row"><span class="label">SUSFS</span><span id="susfs-status" class="value badge">...</span></div>
+      <div class="status-row"><span class="label">NTSYNC</span><span id="ntsync-status" class="value badge">...</span></div>
+      <div class="status-row"><span class="label">CPU Gov</span><span id="cpu-gov" class="value">...</span></div>
+      <div class="status-row"><span class="label">GPU Gov</span><span id="gpu-gov" class="value">...</span></div>
+      <div class="status-row"><span class="label">TCP CC</span><span id="tcp-cc" class="value">...</span></div>
+      <div class="status-row"><span class="label">I/O Sched</span><span id="io-sched" class="value">...</span></div>
+      <div class="status-row"><span class="label">ZRAM</span><span id="zram-info" class="value">...</span></div>
+      <div class="status-row"><span class="label">Thermal</span><span id="thermal-temp" class="value">...</span></div>
+    </div>
+    <button onclick="refreshStatus()" class="btn btn-secondary">Refresh</button>
+  </section>
+
+  <section class="card">
+    <h2>Profile Mode</h2>
+    <div class="mode-grid">
+      <button onclick="setMode('balanced')" class="mode-btn" data-mode="balanced">Balanced</button>
+      <button onclick="setMode('performance')" class="mode-btn" data-mode="performance">Performance</button>
+      <button onclick="setMode('powersave')" class="mode-btn" data-mode="powersave">Battery Saver</button>
+      <button onclick="setMode('gaming')" class="mode-btn" data-mode="gaming">Gaming</button>
+    </div>
+    <p class="hint" id="current-mode">Current: loading...</p>
+  </section>
+
+  <section class="card">
+    <h2>Quick Toggles</h2>
+    <div class="toggle-row">
+      <span>Auto Battery Saver</span>
+      <label class="switch"><input type="checkbox" id="toggle-battery-saver" onchange="toggleBatterySaver(this)"><span class="slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <span>TCP ECN</span>
+      <label class="switch"><input type="checkbox" id="toggle-ecn" onchange="toggleEcn(this)"><span class="slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <span>GPU Performance</span>
+      <label class="switch"><input type="checkbox" id="toggle-gpu" onchange="toggleGpu(this)"><span class="slider"></span></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Apply Now</h2>
+    <button onclick="applySettings()" class="btn btn-primary">Re-apply All Settings</button>
+  </section>
+
+  <footer>
+    <p class="footer-text">DUSK Kernel Companion — <span id="footer-mode">balanced</span></p>
+  </footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
