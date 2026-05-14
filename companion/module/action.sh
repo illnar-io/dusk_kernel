@@ -1,7 +1,7 @@
 #!/system/bin/sh
 
 echo "=============================="
-echo "  DUSK Kernel Companion v2.0"
+echo "  DUSK Kernel Companion v2.1"
 echo "=============================="
 echo ""
 

@@ -29,7 +29,7 @@ verbose() {
   [ "$LOG_LEVEL" -ge 2 ] && echo "[dusk] $(date '+%H:%M:%S') $*"
 }
 
-log "=== DUSK Companion v2.0 starting (mode=$MODE) ==="
+log "=== DUSK Companion v2.1 starting (mode=$MODE) ==="
 
 # ============ HELPER ============
 write_val() {
@@ -195,7 +195,7 @@ if [ "$AUTO_BATTERY_SAVER" = "true" ]; then
   ) &
 fi
 
-log "=== DUSK Companion v2.0 applied ==="
+log "=== DUSK Companion v2.1 applied ==="
 
 # ============ UPDATE MODULE DESCRIPTION ============
 MODULE_PROP="/data/adb/modules/dusk_companion/module.prop"

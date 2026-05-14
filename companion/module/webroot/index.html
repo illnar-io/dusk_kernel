@@ -10,7 +10,7 @@
 <div class="container">
   <header>
     <h1>DUSK Kernel</h1>
-    <p class="subtitle">Companion v2.0</p>
+    <p class="subtitle">Companion v2.1</p>
   </header>
 
   <div id="api-status" class="api-warn">Connecting to KSU API...</div>
@@ -29,16 +29,27 @@
       <div class="status-row"><span class="label">ZRAM</span><span id="zram-info" class="value">—</span></div>
       <div class="status-row"><span class="label">Thermal</span><span id="thermal-temp" class="value">—</span></div>
     </div>
-    <button id="btn-refresh" onclick="refreshStatus()" class="btn btn-secondary">Refresh</button>
+    <button id="btn-refresh" class="btn btn-secondary">Refresh</button>
   </section>
+
+  <div id="readonly-notice" class="card" style="display:none; background:#2d1b1b; border:1px solid #f85149;">
+    <p style="color:#ff7b72; margin:0;">Interactive controls disabled — KSU API not available.</p>
+    <p style="color:#8b949e; margin:8px 0 0; font-size:12px;">
+      <strong>To change settings:</strong><br>
+      • Tap <strong>Action</strong> in KSU Manager Module page to re-apply config<br>
+      • Or run via terminal: <code>su -c sh /data/adb/modules/dusk_companion/action.sh</code><br>
+      • Edit <code>config.conf</code> in the module directory manually<br>
+      • Open WebUI from KSU Manager's <strong>gear icon</strong> for interactive mode
+    </p>
+  </div>
 
   <section class="card">
     <h2>Profile Mode</h2>
     <div class="mode-grid">
-      <button onclick="setMode('balanced')" class="mode-btn" data-mode="balanced">Balanced</button>
-      <button onclick="setMode('performance')" class="mode-btn" data-mode="performance">Performance</button>
-      <button onclick="setMode('powersave')" class="mode-btn" data-mode="powersave">Battery</button>
-      <button onclick="setMode('gaming')" class="mode-btn" data-mode="gaming">Gaming</button>
+      <button class="mode-btn" data-mode="balanced">Balanced</button>
+      <button class="mode-btn" data-mode="performance">Performance</button>
+      <button class="mode-btn" data-mode="powersave">Battery</button>
+      <button class="mode-btn" data-mode="gaming">Gaming</button>
     </div>
     <p class="hint" id="current-mode">Current: —</p>
   </section>
@@ -47,21 +58,21 @@
     <h2>Quick Toggles</h2>
     <div class="toggle-row">
       <span>Auto Battery Saver</span>
-      <label class="switch"><input type="checkbox" id="toggle-battery-saver" onchange="toggleBatterySaver(this)"><span class="slider"></span></label>
+      <label class="switch"><input type="checkbox" id="toggle-battery-saver" disabled><span class="slider"></span></label>
     </div>
     <div class="toggle-row">
       <span>TCP ECN</span>
-      <label class="switch"><input type="checkbox" id="toggle-ecn" onchange="toggleEcn(this)"><span class="slider"></span></label>
+      <label class="switch"><input type="checkbox" id="toggle-ecn" disabled><span class="slider"></span></label>
     </div>
     <div class="toggle-row">
       <span>GPU Performance</span>
-      <label class="switch"><input type="checkbox" id="toggle-gpu" onchange="toggleGpu(this)"><span class="slider"></span></label>
+      <label class="switch"><input type="checkbox" id="toggle-gpu" disabled><span class="slider"></span></label>
     </div>
   </section>
 
   <section class="card">
     <h2>Apply Now</h2>
-    <button id="btn-apply" onclick="applySettings()" class="btn btn-primary">Re-apply All Settings</button>
+    <button id="btn-apply" class="btn btn-primary" disabled>Re-apply All Settings</button>
   </section>
 
   <section class="card" id="log-card">

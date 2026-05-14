@@ -1,6 +1,6 @@
 id=dusk_companion
 name=DUSK Kernel Companion
-version=v2.0
-versionCode=3
+version=v2.1
+versionCode=4
 author=ILLnar
 description=DUSK v2.0: Runtime tunings for CPU/GPU/IO/TCP/ZRAM/F2FS/thermal. Tap Action for status. WebUI for mode selection.
