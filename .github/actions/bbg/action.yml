@@ -48,6 +48,22 @@ runs:
             echo 'CONFIG_LSM="landlock,lockdown,yama,loadpin,safesetid,integrity,selinux,smack,tomoyo,apparmor,bpf,baseband_guard"' >> "$FRAGMENT"
           fi
           echo "✓ BBG configured (CONFIG_BBG=y + baseband_guard in CONFIG_LSM)"
+
+          # Safety net: also patch gki_defconfig directly.
+          # The legacy build.sh may not consume GKI_DEFCONFIG_FRAGMENT
+          # (BUILD_CONFIG can override the env var), so ensure BBG configs
+          # are baked into the base defconfig as well.
+          if [ -f "$DEFCONFIG" ]; then
+            if grep -q "^CONFIG_LSM=" "$DEFCONFIG"; then
+              sed -i 's/^CONFIG_LSM="\(.*\)"/CONFIG_LSM="\1,baseband_guard"/' "$DEFCONFIG"
+            fi
+            if ! grep -q "^CONFIG_BBG=" "$DEFCONFIG"; then
+              echo "" >> "$DEFCONFIG"
+              echo "# Baseband Guard (added by dusk_kernel)" >> "$DEFCONFIG"
+              echo "CONFIG_BBG=y" >> "$DEFCONFIG"
+            fi
+            echo "✓ Also patched gki_defconfig directly"
+          fi
         else
           echo "⚠ BBG Kconfig not found in kernel tree, skipping" >&2
         fi

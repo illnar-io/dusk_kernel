@@ -29,8 +29,9 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}/kernel
       run: |
-        set -euo pipefail
-
+        # This step wraps repo init/sync in a subshell so we can fall back to
+        # the Python downloader if repo fails, rather than failing the build.
+        set +e
         FORMATTED_BRANCH="${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.os_patch_level }}"
 
         init_repo() {
@@ -46,7 +47,13 @@ runs:
           echo "deprecated=$DEPRECATED" >> $GITHUB_OUTPUT
         }
 
-        init_repo || { echo "ERROR: init_repo failed" >&2; exit 1; }
+        init_repo
+        INIT_RC=$?
+        if [ $INIT_RC -ne 0 ]; then
+          echo "::warning::repo init failed (exit $INIT_RC), falling back to Python downloader"
+          echo "REPO_FAILED=true" >> $GITHUB_ENV
+          exit 0
+        fi
 
         MAX_RETRIES=3
         RETRY_DELAY_SHORT=15
@@ -55,7 +62,6 @@ runs:
 
         while [ $attempt -le $MAX_RETRIES ]; do
           echo "Attempt $attempt/$MAX_RETRIES: repo sync (timeout $SYNC_TIMEOUT)..."
-          #if timeout $SYNC_TIMEOUT repo sync -c -j16 --fail-fast --no-tags --force-sync --no-clone-bundle --optimized-fetch --retry-fetches=3; then
           if timeout $SYNC_TIMEOUT repo sync -c --no-tags --no-clone-bundle --optimized-fetch --retry-fetches=3; then
             echo "repo sync succeeded on attempt $attempt."
             break
@@ -72,15 +78,17 @@ runs:
             sleep $RETRY_DELAY_SHORT
             init_repo
           else
-            echo "All $MAX_RETRIES attempts failed." >&2
-            exit $rc
+            echo "::warning::All $MAX_RETRIES attempts of repo sync failed, falling back to Python downloader"
+            echo "REPO_FAILED=true" >> $GITHUB_ENV
+            rm -rf .repo 2>/dev/null || true
+            break
           fi
           attempt=$((attempt+1))
         done
 
     - name: Download manifest.xml for branch (with deprecated fallback)
       shell: bash
-      if: ${{ inputs.use_repo != 'true' }}
+      if: ${{ inputs.use_repo != 'true' || env.REPO_FAILED == 'true' }}
       working-directory: ${{ github.workspace }}/kernel
       run: |
         set -euo pipefail
@@ -103,13 +111,13 @@ runs:
 
     - name: Debug Show manifest.xml
       shell: bash
-      if: ${{ inputs.use_repo != 'true' }}
+      if: ${{ inputs.use_repo != 'true' || env.REPO_FAILED == 'true' }}
       working-directory: ${{ github.workspace }}/kernel
       run: cat manifest.xml
       
     - name: Fast Parallel Archive Download
       shell: bash
-      if: ${{ inputs.use_repo != 'true' }}
+      if: ${{ inputs.use_repo != 'true' || env.REPO_FAILED == 'true' }}
       working-directory: ${{ github.workspace }}/kernel
       run: |
         python "${{ github.workspace }}/.github/actions/download-kernel/fast_parallel_download.py"

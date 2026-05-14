@@ -8,21 +8,41 @@ runs:
       run: |
         set -euo pipefail
 
-        # clang needs 'ld' on PATH.  The runner has ld.lld (from LLVM) but
-        # NOT 'ld'.  The legacy build system (build/build.sh) resets PATH
-        # and strips /usr/local/bin where our ld.lld symlink lives, so we
-        # install binutils which provides ld.bfd in /usr/bin/ (never stripped).
-        mkdir -p /usr/local/bin
-        for SRC in /usr/lib/llvm-*/bin/ld.lld $(command -v ld.lld 2>/dev/null || true); do
-          [ -x "$SRC" ] || continue
-          ln -sf "$SRC" /usr/local/bin/ld
-          echo "→ /usr/local/bin/ld -> $SRC"
-          break
-        done
-        # Install binutils so /usr/bin/ld exists even when PATH strips /usr/local/bin
+        # clang needs 'ld' on PATH.  Install binutils first so /usr/bin/ld
+        # (from binutils/ld.bfd) is available as a fallback even when PATH
+        # strips /usr/local/bin (which build/build.sh does).
         sudo apt-get update -qq
         sudo apt-get install -y -qq binutils
-        command -v ld >/dev/null || { echo "::error::'ld' still not found"; exit 1; }
+        mkdir -p /usr/local/bin
+        # Try ld.lld from LLVM installations first (faster LTO), then fall
+        # back to ld.bfd from binutils.
+        LD_TARGET=""
+        for SRC in /usr/lib/llvm-*/bin/ld.lld $(command -v ld.lld 2>/dev/null || true); do
+          [ -x "$SRC" ] || continue
+          LD_TARGET="$SRC"
+          echo "Found ld.lld: $SRC"
+          break
+        done
+        if [ -z "$LD_TARGET" ] && [ -x /usr/bin/ld.bfd ]; then
+          LD_TARGET=/usr/bin/ld.bfd
+          echo "Falling back to ld.bfd (no ld.lld found)"
+        fi
+        if [ -n "$LD_TARGET" ]; then
+          ln -sf "$LD_TARGET" /usr/local/bin/ld
+          ln -sf "$LD_TARGET" /usr/local/bin/ld.lld
+          echo "→ /usr/local/bin/ld -> $LD_TARGET"
+        fi
+        # Verify ld is on PATH
+        command -v ld >/dev/null || {
+          # Last resort: create ld -> /usr/bin/ld.bfd if it exists
+          if [ -x /usr/bin/ld.bfd ]; then
+            ln -sf /usr/bin/ld.bfd /usr/local/bin/ld
+            echo "→ /usr/local/bin/ld -> /usr/bin/ld.bfd (last-resort)"
+          else
+            echo "::error::'ld' still not found (no ld.lld or ld.bfd available)"
+            exit 1
+          fi
+        }
 
         # clang looks for ld in its InstalledDir (e.g. /usr/lib/llvm-12/bin/ld)
         # before falling back to PATH.  Make sure each LLVM version's bin dir

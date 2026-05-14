@@ -15,6 +15,17 @@ runs:
         # processing KEY=VALUE arguments.
         export BUILD_CONFIG=common/build.config.gki.aarch64
         export GKI_DEFCONFIG_FRAGMENT="${{ github.workspace }}/wild_gki.fragment"
+        # Also append GKI_DEFCONFIG_FRAGMENT to the BUILD_CONFIG file itself.
+        # build.sh sources BUILD_CONFIG (a shell script) which may override our
+        # exported env var with a built-in fragment path.  Appending at the end
+        # ensures our fragment is the last value assigned.
+        if [ -f "common/build.config.gki.aarch64" ]; then
+          if ! grep -q "wild_gki.fragment" "common/build.config.gki.aarch64"; then
+            echo "" >> "common/build.config.gki.aarch64"
+            echo "# wild_gki.fragment (appended by dusk_kernel)" >> "common/build.config.gki.aarch64"
+            echo "GKI_DEFCONFIG_FRAGMENT=\"${{ github.workspace }}/wild_gki.fragment\"" >> "common/build.config.gki.aarch64"
+          fi
+        fi
         MAKE_ARGS=(
           SKIP_VENDOR_BOOT=1
           SKIP_EXT_MODULES=1
