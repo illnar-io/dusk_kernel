@@ -201,7 +201,7 @@ log "=== DUSK Companion v2.0 applied ==="
 MODULE_PROP="/data/adb/modules/dusk_companion/module.prop"
 
 ksu()      { [ -d /data/adb/ksu ] && echo "yes" || echo "no"; }
-susfs()    { ([ -e /proc/ksud ] && ksud debug 2>/dev/null | grep -qi susfs) && echo "yes" || echo "no"; }
+susfs()    { zcat /proc/config.gz 2>/dev/null | grep -q 'CONFIG_KSU_SUSFS=y' && echo "yes" || echo "no"; }
 ntsync()   { [ -c /dev/ntsync ] 2>/dev/null && echo "yes" || { lsmod 2>/dev/null | grep -q ntsync && echo "yes" || echo "no"; }; }
 sched()    { [ "$(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor 2>/dev/null)" = "$CPU_GOV" ] && echo "yes" || echo "no"; }
 gpu_gov()  { g=$(cat /sys/class/devfreq/*/governor 2>/dev/null | head -1); [ "$g" = "$GPU_GOVERNOR" ] && echo "yes" || echo "no"; }
@@ -226,9 +226,13 @@ CG=$(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor 2>/dev/null ||
 GG=$(cat /sys/class/devfreq/*/governor 2>/dev/null | head -1 || echo "?")
 TC=$(cat /proc/sys/net/ipv4/tcp_congestion_control 2>/dev/null || echo "?")
 IO=$(cat /sys/block/sda/queue/scheduler 2>/dev/null | grep -o "\[.*\]" | tr -d '[]' || echo "?")
-ZA=$(cat /sys/block/zram0/comp_algorithm 2>/dev/null | grep -oE "\[.*\]" | tr -d '[]' || echo "?")
-ZM=$(awk '{printf "%.0fMB/%.0fMB",$3/1024/1024,$1/1024/1024}' /sys/block/zram0/mm_stat 2>/dev/null || echo "?")
-TH=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null | awk '{printf "%.1f°C",$1/1000}' || echo "?")
+ZA="?"
+if [ -d /sys/block/zram0 ]; then
+  ZA=$(cat /sys/block/zram0/comp_algorithm 2>/dev/null | grep -oE "\[.*\]" | tr -d '[]')
+  ZM=$(awk '{printf "%.0fMB/%.0fMB",$3/1024/1024,$1/1024/1024}' /sys/block/zram0/mm_stat 2>/dev/null)
+  [ -z "$ZM" ] && ZM="inactive"
+fi
+TH=$(for tz in /sys/class/thermal/thermal_zone*; do [ -f "$tz/temp" ] || continue; t=$(cat "$tz/temp" 2>/dev/null); [ "$t" -gt 0 ] 2>/dev/null || continue; awk "BEGIN{printf \"%.1f°C\",$t/1000}" 2>/dev/null; break; done; [ -z "$TH" ] && echo "?")
 
 cat > "$STATUS_FILE" << EOF
 {
