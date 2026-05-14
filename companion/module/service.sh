@@ -212,3 +212,41 @@ DESC="mode:$MODE CPU:$(sched) GPU:$(gpu_gov) IO:$(io_ok) KSU:$(ksu) NTSYNC:$(nts
 if [ -f "$MODULE_PROP" ]; then
   sed -i "s/^description=.*/description=$DESC/" "$MODULE_PROP"
 fi
+
+# ============ WRITE status.json FOR WebUI ============
+STATUS_DIR="/data/adb/modules/dusk_companion/webroot"
+STATUS_FILE="$STATUS_DIR/status.json"
+mkdir -p "$STATUS_DIR"
+
+# Gather computed values
+KS=$(ksu)
+SS=$(susfs)
+NS=$(ntsync)
+CG=$(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor 2>/dev/null || echo "?")
+GG=$(cat /sys/class/devfreq/*/governor 2>/dev/null | head -1 || echo "?")
+TC=$(cat /proc/sys/net/ipv4/tcp_congestion_control 2>/dev/null || echo "?")
+IO=$(cat /sys/block/sda/queue/scheduler 2>/dev/null | grep -o "\[.*\]" | tr -d '[]' || echo "?")
+ZA=$(cat /sys/block/zram0/comp_algorithm 2>/dev/null | grep -oE "\[.*\]" | tr -d '[]' || echo "?")
+ZM=$(awk '{printf "%.0fMB/%.0fMB",$3/1024/1024,$1/1024/1024}' /sys/block/zram0/mm_stat 2>/dev/null || echo "?")
+TH=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null | awk '{printf "%.1f°C",$1/1000}' || echo "?")
+
+cat > "$STATUS_FILE" << EOF
+{
+  "kernel": "$(uname -r)",
+  "ksu": "$KS",
+  "susfs": "$SS",
+  "ntsync": "$NS",
+  "cpu_gov": "$CG",
+  "gpu_gov": "$GG",
+  "tcp_cc": "$TC",
+  "io_sched": "$IO",
+  "zram_algo": "$ZA",
+  "zram_mem": "$ZM",
+  "thermal": "$TH",
+  "mode": "$MODE",
+  "battery_saver": $(echo "$AUTO_BATTERY_SAVER" | tr '[:upper:]' '[:lower:]'),
+  "ecn": $([ "$TCP_ECN" = "true" ] && echo true || echo false),
+  "gpu_perf": $([ "$GPU_GOVERNOR" = "performance" ] && echo true || echo false)
+}
+EOF
+echo "✓ status.json written ($STATUS_FILE)"

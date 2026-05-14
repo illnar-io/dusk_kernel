@@ -3,8 +3,7 @@ let KSU_API = null;
 const LOG = [];
 
 function log(msg, type) {
-  const entry = { msg, type: type || 'info', time: Date.now() };
-  LOG.push(entry);
+  LOG.push({ msg, type: type || 'info' });
   renderLog();
 }
 
@@ -21,22 +20,99 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
-async function detectAPI() {
-  // Try multiple possible API locations
-  const candidates = [
-    { name: 'global KernelSU', obj: typeof KernelSU !== 'undefined' ? KernelSU : null },
-    { name: 'window.KernelSU', obj: typeof window.KernelSU !== 'undefined' ? window.KernelSU : null },
-  ];
-  for (const c of candidates) {
-    if (c.obj && typeof c.obj.exec === 'function') {
+function setAPIStatus(type, msg) {
+  const el = document.getElementById('api-status');
+  if (!el) return;
+  el.className = 'api-warn ' + type;
+  el.textContent = msg;
+}
+
+// ─── API backends ───
+
+const JSAPI = {
+  name: 'JS (KernelSU)',
+  detect: async () => {
+    for (const scope of [() => KernelSU, () => window.KernelSU]) {
       try {
-        const test = await c.obj.exec('echo "api_ok"');
-        const out = (test && (test.stdout || test)) || '';
-        if (out.includes('api_ok') || String(out).includes('api_ok')) {
-          log(`KSU API detected via ${c.name}`, 'ok');
-          return c.obj;
+        const api = scope();
+        if (api && typeof api.exec === 'function') {
+          const r = await api.exec('echo dusk_api_check');
+          const out = typeof r === 'string' ? r : (r && r.stdout) || '';
+          if (out.includes('dusk_api_check')) return api;
         }
       } catch (_) {}
+    }
+    return null;
+  },
+  exec: async (api, cmd) => {
+    const r = await api.exec(cmd);
+    return {
+      stdout: typeof r === 'string' ? r : (r && r.stdout) || '',
+      stderr: (r && r.stderr) || '',
+      code: (r && r.result_code) || 0,
+    };
+  }
+};
+
+const HTTPAPI = {
+  name: 'HTTP (/api/exec)',
+  detect: async () => {
+    const origin = window.location.origin;
+    if (!origin || origin === 'null' || origin.startsWith('file://')) return null;
+    const payloads = [
+      { url: `${origin}/api/exec`, opts: { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cmd: 'echo dusk_api_check' }) } },
+      { url: `${origin}/api/exec?cmd=echo+dusk_api_check`, opts: { method: 'GET' } },
+    ];
+    for (const p of payloads) {
+      try {
+        const res = await fetch(p.url, { ...p.opts, signal: AbortSignal.timeout(3000) });
+        if (!res.ok) continue;
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); } catch { data = { stdout: text }; }
+        const out = (data.stdout || '').trim();
+        if (out.includes('dusk_api_check')) return { origin, method: p.opts.method };
+      } catch (_) {}
+    }
+    return null;
+  },
+  exec: async (ctx, cmd) => {
+    const { origin, method } = ctx;
+    let res;
+    if (method === 'POST') {
+      res = await fetch(`${origin}/api/exec`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cmd }) });
+    } else {
+      res = await fetch(`${origin}/api/exec?cmd=${encodeURIComponent(cmd)}`);
+    }
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch { data = { stdout: text }; }
+    return {
+      stdout: (data.stdout || '').trim(),
+      stderr: (data.stderr || '').trim(),
+      code: data.result_code !== undefined ? data.result_code : (res.ok ? 0 : 1),
+    };
+  }
+};
+
+const STATUSFILE_API = {
+  name: 'status.json',
+  exec: async (_ctx, cmd) => {
+    throw new Error('Cannot execute commands via status file. Use action.sh or service.sh.');
+  }
+};
+
+// ─── detect API ───
+
+async function detectAPI() {
+  // Order: JS bridge, HTTP POST, HTTP GET
+  const backends = [JSAPI, HTTPAPI];
+  for (const bk of backends) {
+    log(`Trying ${bk.name}...`, 'info');
+    const ctx = await bk.detect();
+    if (ctx) {
+      log(`✓ ${bk.name} available`, 'ok');
+      return { api: bk, ctx };
     }
   }
   return null;
@@ -49,37 +125,41 @@ async function execCmd(cmd) {
   }
   try {
     log(`$ ${cmd}`, 'cmd');
-    const result = await KSU_API.exec(cmd);
-    let stdout = '';
-    if (typeof result === 'string') {
-      stdout = result;
-    } else if (result && typeof result.stdout === 'string') {
-      stdout = result.stdout;
-    } else if (result && typeof result === 'object') {
-      stdout = JSON.stringify(result);
-    }
-    const trimmed = stdout.trim();
-    if (trimmed) log(trimmed.substring(0, 200), 'ok');
+    const result = await KSU_API.api.exec(KSU_API.ctx, cmd);
+    const out = result.stdout || '';
+    if (out) log(out.length > 200 ? out.substring(0, 200) + '...' : out, 'ok');
     else log('(empty)', 'info');
-    return trimmed;
+    if (result.stderr) log(result.stderr, 'err');
+    return out;
   } catch (e) {
     log(`Error: ${e.message || e}`, 'err');
     return '';
   }
 }
 
-function setAPIStatus(type, msg) {
-  const el = document.getElementById('api-status');
-  if (!el) return;
-  el.className = 'api-warn ' + type;
-  el.textContent = msg;
-}
-
-// ─── UI actions ───
+// ─── UI (read-only status from JSON, exec for interaction) ───
 
 async function refreshStatus() {
   const btn = document.getElementById('btn-refresh');
   if (btn) btn.disabled = true;
+
+  // Try status.json first (fast, no API needed)
+  try {
+    let data = null;
+    const res = await fetch('status.json?' + Date.now());
+    if (res.ok) data = await res.json();
+    if (data) {
+      applyStatusData(data);
+      if (btn) btn.disabled = false;
+      return;
+    }
+  } catch (_) {}
+
+  // Fallback: API
+  if (!KSU_API) {
+    if (btn) btn.disabled = false;
+    return;
+  }
 
   const [kernel, ksu, susfs, ntsync, cpuGov, gpuGov, tcpCc, ioSched, zramAlgo, zramMem, thermal] = await Promise.all([
     execCmd('uname -r'),
@@ -95,37 +175,45 @@ async function refreshStatus() {
     execCmd("cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null | awk '{printf \"%.1f°C\",$1/1000}' || echo '?'"),
   ]);
 
-  document.getElementById('kernel-version').textContent = kernel || '—';
-  document.getElementById('ksu-status').textContent = ksu === 'yes' ? '✓ yes' : '✗ no';
-  document.getElementById('susfs-status').textContent = susfs === 'yes' ? '✓ yes' : '✗ no';
-  document.getElementById('ntsync-status').textContent = ntsync === 'yes' ? '✓ yes' : '✗ no';
-  document.getElementById('cpu-gov').textContent = cpuGov || '—';
-  document.getElementById('gpu-gov').textContent = gpuGov || '—';
-  document.getElementById('tcp-cc').textContent = tcpCc || '—';
-  document.getElementById('io-sched').textContent = ioSched || '—';
-  document.getElementById('zram-info').textContent = (zramAlgo && zramAlgo !== '?' ? `${zramAlgo} (${zramMem})` : '—');
-  document.getElementById('thermal-temp').textContent = thermal || '—';
-
-  // Color badges
-  setBadgeColor('ksu-status', ksu === 'yes');
-  setBadgeColor('susfs-status', susfs === 'yes');
-  setBadgeColor('ntsync-status', ntsync === 'yes');
+  applyStatusData({
+    kernel, ksu, susfs, ntsync,
+    cpu_gov: cpuGov, gpu_gov: gpuGov, tcp_cc: tcpCc,
+    io_sched: ioSched, zram_algo: zramAlgo, zram_mem: zramMem,
+    thermal: thermal,
+  });
 
   if (btn) btn.disabled = false;
 }
 
-function setBadgeColor(id, ok) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.style.background = ok ? '#1b4721' : '#47211b';
-  el.style.color = ok ? '#7ee787' : '#ff7b72';
-  el.style.padding = '1px 8px';
-  el.style.borderRadius = '10px';
-  el.style.fontSize = '11px';
-  el.style.fontWeight = '600';
+function applyStatusData(d) {
+  const set = (id, val, badge) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = val || '—';
+    if (badge !== undefined) {
+      el.style.background = badge ? '#1b4721' : '#47211b';
+      el.style.color = badge ? '#7ee787' : '#ff7b72';
+      el.style.padding = '1px 8px';
+      el.style.borderRadius = '10px';
+      el.style.fontSize = '11px';
+      el.style.fontWeight = '600';
+    }
+  };
+
+  set('kernel-version', d.kernel);
+  set('ksu-status', d.ksu === 'yes' ? '✓ yes' : '✗ no', d.ksu === 'yes');
+  set('susfs-status', d.susfs === 'yes' ? '✓ yes' : '✗ no', d.susfs === 'yes');
+  set('ntsync-status', d.ntsync === 'yes' ? '✓ yes' : '✗ no', d.ntsync === 'yes');
+  set('cpu-gov', d.cpu_gov);
+  set('gpu-gov', d.gpu_gov);
+  set('tcp-cc', d.tcp_cc);
+  set('io-sched', d.io_sched);
+  set('zram-info', (d.zram_algo && d.zram_algo !== '?' ? `${d.zram_algo} (${d.zram_mem})` : ''));
+  set('thermal-temp', d.thermal);
 }
 
 async function setMode(mode) {
+  if (!KSU_API) { log('API unavailable — mode change disabled', 'err'); return; }
   log(`Setting mode: ${mode}`, 'info');
   await execCmd(`sed -i '/^MODE=/d' /data/adb/modules/dusk_companion/config.conf`);
   await execCmd(`echo MODE=${mode} >> /data/adb/modules/dusk_companion/config.conf`);
@@ -138,6 +226,7 @@ async function setMode(mode) {
 }
 
 async function toggleBatterySaver(el) {
+  if (!KSU_API) { el.checked = !el.checked; log('API unavailable', 'err'); return; }
   const val = el.checked ? 'true' : 'false';
   await execCmd(`sed -i '/^AUTO_BATTERY_SAVER=/d' /data/adb/modules/dusk_companion/config.conf`);
   await execCmd(`echo AUTO_BATTERY_SAVER=${val} >> /data/adb/modules/dusk_companion/config.conf`);
@@ -145,6 +234,7 @@ async function toggleBatterySaver(el) {
 }
 
 async function toggleEcn(el) {
+  if (!KSU_API) { el.checked = !el.checked; log('API unavailable', 'err'); return; }
   const val = el.checked ? '1' : '0';
   await execCmd(`echo ${val} > /proc/sys/net/ipv4/tcp_ecn`);
   await execCmd(`sed -i '/^TCP_ECN=/d' /data/adb/modules/dusk_companion/config.conf`);
@@ -153,6 +243,7 @@ async function toggleEcn(el) {
 }
 
 async function toggleGpu(el) {
+  if (!KSU_API) { el.checked = !el.checked; log('API unavailable', 'err'); return; }
   const gov = el.checked ? 'performance' : 'simple_ondemand';
   await execCmd(`for d in /sys/class/devfreq/*/governor; do echo ${gov} > "$d" 2>/dev/null; done`);
   await execCmd(`sed -i '/^GPU_GOVERNOR=/d' /data/adb/modules/dusk_companion/config.conf`);
@@ -161,6 +252,7 @@ async function toggleGpu(el) {
 }
 
 async function applySettings() {
+  if (!KSU_API) { log('API unavailable', 'err'); return; }
   const btn = document.getElementById('btn-apply');
   if (btn) { btn.disabled = true; btn.textContent = 'Applying...'; }
   log('Applying all settings...', 'info');
@@ -172,44 +264,47 @@ async function applySettings() {
 // ─── Init ───
 
 async function init() {
-  // wait a brief moment for KSU bridge to initialize
-  let retries = 0;
-  while (retries < 10) {
-    KSU_API = await detectAPI();
-    if (KSU_API) break;
-    await new Promise(r => setTimeout(r, 200));
-    retries++;
+  log('DUSK Companion WebUI loading...', 'info');
+
+  // Try to detect API
+  KSU_API = await detectAPI();
+  if (KSU_API) {
+    setAPIStatus('ok', `${KSU_API.api.name} connected`);
   }
 
+  // Always try to load status.json (no API needed)
+  try {
+    const res = await fetch('status.json?' + Date.now());
+    if (res.ok) {
+      const data = await res.json();
+      applyStatusData(data);
+      if (data.mode) {
+        const m = document.querySelector(`[data-mode="${data.mode}"]`);
+        if (m) m.classList.add('active');
+        document.getElementById('current-mode').textContent = `Current: ${data.mode}`;
+      }
+      if (data.battery_saver !== undefined) document.getElementById('toggle-battery-saver').checked = data.battery_saver;
+      if (data.ecn !== undefined) document.getElementById('toggle-ecn').checked = data.ecn;
+      if (data.gpu_perf !== undefined) document.getElementById('toggle-gpu').checked = data.gpu_perf;
+      log('Status loaded from status.json', 'ok');
+      return; // status.json has all we need
+    }
+  } catch (_) {}
+
+  // No status.json — try live API for status
   if (!KSU_API) {
-    setAPIStatus('error', 'No KSU WebUI API available — status will not work');
-    log('KSU API not found after 2s timeout', 'err');
-    // Disable interactive elements
-    document.querySelectorAll('button, input').forEach(el => el.disabled = true);
-    const btns = document.querySelectorAll('.btn');
-    btns.forEach(b => { b.disabled = false; }); // Re-enable refresh for retry
-    document.getElementById('btn-refresh').disabled = false;
+    setAPIStatus('error', 'No KSU API — WebUI is read-only. Tap Action in KSU Manager to update status.');
+    log('No API or status.json found', 'err');
     return;
   }
 
-  setAPIStatus('ok', 'KSU API connected');
-
-  // Load initial status
   await refreshStatus();
 
-  // Load saved mode and toggle states
-  const mode = await execCmd("grep '^MODE=' /data/adb/modules/dusk_companion/config.conf | cut -d= -f2");
-  if (mode) {
-    document.querySelector(`[data-mode="${mode}"]`)?.classList.add('active');
-    document.getElementById('current-mode').textContent = `Current: ${mode}`;
-  }
-
+  // Load config for toggle states
   const abs = await execCmd("grep '^AUTO_BATTERY_SAVER=' /data/adb/modules/dusk_companion/config.conf | cut -d= -f2");
   if (abs === 'true' || abs === 'false') document.getElementById('toggle-battery-saver').checked = abs === 'true';
-
   const ecn = await execCmd('cat /proc/sys/net/ipv4/tcp_ecn 2>/dev/null || echo 0');
   if (ecn === '1' || ecn === '0') document.getElementById('toggle-ecn').checked = ecn === '1';
-
   const gpu = await execCmd("for d in /sys/class/devfreq/*; do [ ! -d \"$d\" ] && continue; n=$(cat \"$d/name\" 2>/dev/null); case \"$n\" in *mali*|*gpu*) cat \"$d/governor\" 2>/dev/null; break;; esac; done || echo '?'");
   if (gpu) document.getElementById('toggle-gpu').checked = gpu === 'performance';
 }

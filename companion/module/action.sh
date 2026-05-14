@@ -18,26 +18,23 @@ check() {
   fi
 }
 
+check_ksu()    { [ -d /data/adb/ksu ] && echo yes || echo no; }
+susfs_check()  { [ -e /proc/ksud ] && ksud debug 2>/dev/null | grep -qi susfs && echo yes || echo no; }
+check_ntsync() { [ -c /dev/ntsync ] && echo yes || (lsmod 2>/dev/null | grep -q ntsync && echo yes || echo no); }
+
 # Kernel
 echo "--- Kernel ---"
 echo "  $(uname -r)"
 echo ""
 
 # KernelSU
-check "KernelSU-Next" "$([ -d /data/adb/ksu ] && echo yes || echo no)"
+check "KernelSU-Next" "$(check_ksu)"
 
 # SUSFS
-susfs_check() { [ -e /proc/ksud ] && ksud debug 2>/dev/null | grep -qi susfs && echo yes || echo no; }
 check "SUSFS" "$(susfs_check)"
 
 # NTSYNC
-if [ -c /dev/ntsync ] 2>/dev/null; then
-  check "NTSYNC" "yes"
-elif lsmod 2>/dev/null | grep -q ntsync; then
-  check "NTSYNC" "yes"
-else
-  check "NTSYNC" "no"
-fi
+check "NTSYNC" "$(check_ntsync)"
 
 # Mode
 echo ""
@@ -133,6 +130,44 @@ echo "--- Filesystem ---"
 commit=$(grep " /data " /proc/mounts 2>/dev/null | grep -o 'commit=[0-9]*' | cut -d= -f2)
 check "ext4 /data commit (${EXT4_COMMIT:-30}s)" "$([ "$commit" = "${EXT4_COMMIT:-30}" ] && echo yes || echo no)"
 [ -n "$commit" ] && echo "  Current: ${commit}s"
+
+# ============ WRITE status.json FOR WebUI ============
+STATUS_DIR="/data/adb/modules/dusk_companion/webroot"
+STATUS_FILE="$STATUS_DIR/status.json"
+mkdir -p "$STATUS_DIR"
+
+KS=$(check_ksu)
+SS=$(susfs_check)
+NS=$(check_ntsync)
+CG=$(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor 2>/dev/null || echo "?")
+GG=$(cat /sys/class/devfreq/*/governor 2>/dev/null | head -1 || echo "?")
+TC=$(cat /proc/sys/net/ipv4/tcp_congestion_control 2>/dev/null || echo "?")
+IO=$(cat /sys/block/sda/queue/scheduler 2>/dev/null | grep -o "\[.*\]" | tr -d '[]' || echo "?")
+ZA=$(cat /sys/block/zram0/comp_algorithm 2>/dev/null | grep -oE "\[.*\]" | tr -d '[]' || echo "?")
+ZM=$(awk '{printf "%.0fMB/%.0fMB",$3/1024/1024,$1/1024/1024}' /sys/block/zram0/mm_stat 2>/dev/null || echo "?")
+TH=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null | awk '{printf "%.1f°C",$1/1000}' || echo "?")
+
+cat > "$STATUS_FILE" << EOF
+{
+  "kernel": "$(uname -r)",
+  "ksu": "$KS",
+  "susfs": "$SS",
+  "ntsync": "$NS",
+  "cpu_gov": "$CG",
+  "gpu_gov": "$GG",
+  "tcp_cc": "$TC",
+  "io_sched": "$IO",
+  "zram_algo": "$ZA",
+  "zram_mem": "$ZM",
+  "thermal": "$TH",
+  "mode": "${MODE:-balanced}",
+  "battery_saver": $(echo "${AUTO_BATTERY_SAVER:-true}" | tr '[:upper:]' '[:lower:]'),
+  "ecn": $([ "${TCP_ECN:-false}" = "true" ] && echo true || echo false),
+  "gpu_perf": $([ "${GPU_GOVERNOR:-performance}" = "performance" ] && echo true || echo false)
+}
+EOF
+echo ""
+echo "✓ status.json written"
 
 echo ""
 echo "=============================="
