@@ -292,17 +292,19 @@ runs:
       working-directory: ${{ github.workspace }}/kernel/common
       run: |
         echo "Applying 6.12 SUSFS fixes"
-        # The 50_add patch for 6.12 references susfs_is_current_proc_umounted()
-        # in fs/exec.c, but the hunk that adds the include of linux/susfs.h may
-        # fail to apply on some sublevels. Ensure both the include in exec.c and
-        # the declaration in susfs.h exist before the 50_add patch runs.
+        # The 50_add patch for 6.12 adds #include <linux/susfs_def.h> (inside
+        # #ifdef CONFIG_KSU_SUSFS) after #include <linux/ksm.h> in fs/exec.c.
+        # This hunk can fail on sublevels that have extra includes (e.g. dma-buf.h)
+        # between ksm.h and uaccess.h. Pre-insert #include <linux/susfs.h> after
+        # ksm.h so the declaration is available. The 50_add patch will apply its
+        # hunk with fuzz (if context allows) or fail harmlessly (|| true).
         if ! grep -q "susfs_is_current_proc_umounted" include/linux/susfs.h 2>/dev/null; then
           echo "→ Adding susfs_is_current_proc_umounted declaration"
           echo "extern bool susfs_is_current_proc_umounted(void);" >> include/linux/susfs.h
         fi
         if ! grep -q '#include <linux/susfs.h>' fs/exec.c 2>/dev/null; then
           echo "→ Adding #include <linux/susfs.h> to fs/exec.c"
-          sed -i '1i #include <linux/susfs.h>' fs/exec.c
+          sed -i '/^#include <linux\/ksm.h>$/a #include <linux/susfs.h>' fs/exec.c
         fi
 
     - name: Apply Kernel SUSFS Patches
