@@ -1,5 +1,4 @@
 let KSU_API = null;
-let UI_READONLY = false;
 const LOG = [];
 
 function log(msg, type) {
@@ -109,15 +108,20 @@ async function detectAPI() {
 async function execCmd(cmd) {
   if (!KSU_API) return '';
   try {
+    log(`$ ${cmd}`, 'cmd');
     const result = await KSU_API.api.exec(KSU_API.ctx, cmd);
-    return (result.stdout || '').trim();
-  } catch (_) {
+    const out = result.stdout || '';
+    if (out) log(out.length > 150 ? out.substring(0, 150) + '...' : out, 'ok');
+    else log('(done)', 'info');
+    if (result.stderr) log(result.stderr, 'err');
+    return out;
+  } catch (e) {
+    log(`Error: ${e.message || e}`, 'err');
     return '';
   }
 }
 
 function setReadonlyUI() {
-  UI_READONLY = true;
   document.querySelectorAll('.mode-btn, #btn-apply').forEach(el => { el.disabled = true; });
   document.querySelectorAll('.switch input[type=checkbox]').forEach(el => { el.disabled = true; });
   document.getElementById('readonly-notice').style.display = 'block';
@@ -173,6 +177,50 @@ function applyStatusData(d) {
   if (d.gpu_perf !== undefined) document.getElementById('toggle-gpu').checked = d.gpu_perf;
 }
 
+async function setMode(mode) {
+  log(`Setting mode: ${mode}`, 'info');
+  await execCmd(`sed -i '/^MODE=/d' /data/adb/modules/dusk_companion/config.conf`);
+  await execCmd(`echo MODE=${mode} >> /data/adb/modules/dusk_companion/config.conf`);
+  await execCmd('sh /data/adb/modules/dusk_companion/service.sh 2>/dev/null');
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector(`[data-mode="${mode}"]`);
+  if (btn) btn.classList.add('active');
+  document.getElementById('current-mode').textContent = `Current: ${mode}`;
+  refreshStatus();
+}
+
+async function toggleBatterySaver(el) {
+  const val = el.checked ? 'true' : 'false';
+  await execCmd(`sed -i '/^AUTO_BATTERY_SAVER=/d' /data/adb/modules/dusk_companion/config.conf`);
+  await execCmd(`echo AUTO_BATTERY_SAVER=${val} >> /data/adb/modules/dusk_companion/config.conf`);
+  log(`Auto battery saver: ${val}`, 'info');
+}
+
+async function toggleEcn(el) {
+  const val = el.checked ? '1' : '0';
+  await execCmd(`echo ${val} > /proc/sys/net/ipv4/tcp_ecn`);
+  await execCmd(`sed -i '/^TCP_ECN=/d' /data/adb/modules/dusk_companion/config.conf`);
+  await execCmd(`echo TCP_ECN=${el.checked} >> /data/adb/modules/dusk_companion/config.conf`);
+  refreshStatus();
+}
+
+async function toggleGpu(el) {
+  const gov = el.checked ? 'performance' : 'simple_ondemand';
+  await execCmd(`for d in /sys/class/devfreq/*/governor; do echo ${gov} > "$d" 2>/dev/null; done`);
+  await execCmd(`sed -i '/^GPU_GOVERNOR=/d' /data/adb/modules/dusk_companion/config.conf`);
+  await execCmd(`echo GPU_GOVERNOR=${gov} >> /data/adb/modules/dusk_companion/config.conf`);
+  refreshStatus();
+}
+
+async function applySettings() {
+  const btn = document.getElementById('btn-apply');
+  if (btn) { btn.disabled = true; btn.textContent = 'Applying...'; }
+  log('Applying all settings...', 'info');
+  await execCmd('sh /data/adb/modules/dusk_companion/service.sh 2>/dev/null');
+  if (btn) { btn.disabled = false; btn.textContent = 'Re-apply All Settings'; }
+  refreshStatus();
+}
+
 async function init() {
   log('DUSK Companion WebUI loading...', 'info');
 
@@ -181,9 +229,10 @@ async function init() {
     setAPIStatus('ok', `${KSU_API.api.name} connected`);
     log('Interactive mode enabled', 'ok');
   } else {
-    setAPIStatus('error', 'Read-only — use KSU Manager Action button or terminal for changes');
+    setAPIStatus('error', 'Read-only — use Action button or terminal for changes');
     setReadonlyUI();
     log('API unavailable — read-only mode', 'warn');
+    document.getElementById('readonly-notice').style.display = 'block';
   }
 
   try {
@@ -200,5 +249,21 @@ async function init() {
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-refresh')?.addEventListener('click', refreshStatus);
+  document.getElementById('btn-apply')?.addEventListener('click', applySettings);
+
+  document.querySelectorAll('.mode-btn').forEach(el => {
+    el.addEventListener('click', () => setMode(el.dataset.mode));
+  });
+
+  document.getElementById('toggle-battery-saver')?.addEventListener('change', function() {
+    toggleBatterySaver(this);
+  });
+  document.getElementById('toggle-ecn')?.addEventListener('change', function() {
+    toggleEcn(this);
+  });
+  document.getElementById('toggle-gpu')?.addEventListener('change', function() {
+    toggleGpu(this);
+  });
+
   init();
 });
