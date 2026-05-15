@@ -29,9 +29,9 @@ function setAPIStatus(type, msg) {
 
 const backends = [
   {
-    name: 'JS (KernelSU)',
+    name: 'JS (ksu bridge)',
     detect: async () => {
-      for (const scope of [() => KernelSU, () => window.KernelSU]) {
+      for (const scope of [() => ksu, () => window.ksu]) {
         try {
           const api = scope();
           if (api && typeof api.exec === 'function') {
