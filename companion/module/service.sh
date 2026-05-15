@@ -31,6 +31,19 @@ verbose() {
 
 log "=== DUSK Companion v2.1 starting (mode=$MODE) ==="
 
+echo ""
+echo "  .     *       .       ."
+echo "  *       .        .   🌕    ."
+echo "      .        .        ."
+echo "           |               |"
+echo "        _\` |  |   |   __|  |  /"
+echo "       (   |  |   | \\__ \\    <"
+echo "      \\__,_| \\__,_| ____/ _|\\_\\"
+echo "       .     *       .       ."
+echo "  *       .        .      ."
+echo "      .        .        ."
+echo ""
+
 # ============ HELPER ============
 write_val() {
   local file="$1" val="$2" label="$3"
