@@ -28,6 +28,15 @@ runs:
           echo "⚠ SYSVIPC kABI fix doesn't apply on this kernel version, skipping" >&2
         fi
 
+    - name: Export IPC symbols for module linkage
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel
+      run: |
+        echo >> "${{ github.workspace }}/kernel/common/ipc/namespace.c"
+        echo 'EXPORT_SYMBOL_GPL(put_ipc_ns);' >> "${{ github.workspace }}/kernel/common/ipc/namespace.c"
+        echo >> "${{ github.workspace }}/kernel/common/ipc/msgutil.c"
+        echo 'EXPORT_SYMBOL_GPL(init_ipc_ns);' >> "${{ github.workspace }}/kernel/common/ipc/msgutil.c"
+
     - name: Enable Configs
       shell: bash
       working-directory: ${{ github.workspace }}/kernel
