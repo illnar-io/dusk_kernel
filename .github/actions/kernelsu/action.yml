@@ -19,7 +19,7 @@ runs:
 
         if [[ "$ROOT" == "KernelSU-Next" ]] || [[ "$ROOT" == "KSUN" ]]; then
           echo "  Cloning KernelSU-Next..."
-          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/dev/kernel/setup.sh" | bash -s 5a4a71874caaad06aa126f761c93391de1d32361
+          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/dev/kernel/setup.sh" | bash -s 4c9737aed458843e920de95b0bcad56cf790663b
           cd KernelSU-Next/kernel
           COMMITS_COUNT=$(/usr/bin/git rev-list --count HEAD)
           BASE_VERSION=30000

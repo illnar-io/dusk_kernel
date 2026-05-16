@@ -343,7 +343,7 @@ jobs:
         ROOT="${{ inputs.root }}"
         SUSFS="${{ inputs.susfs }}"
         KSU_COMPAT="${{ inputs.ksu_compat }}"
-        KSUN_COMMIT="5a4a71874caaad06aa126f761c93391de1d32361"
+        KSUN_COMMIT="4c9737aed458843e920de95b0bcad56cf790663b"
         KSUN_TAG="dev"
         KSU_COMMIT="main"
         SKSU_COMMIT="builtin"
@@ -445,7 +445,7 @@ jobs:
         set -e
 
         ROOT="${{ inputs.root }}"
-        KSUN_COMMIT="5a4a71874caaad06aa126f761c93391de1d32361"
+        KSUN_COMMIT="4c9737aed458843e920de95b0bcad56cf790663b"
         KSUN_TAG="dev"
         AK3_COMMIT="gki-2.0"
         PATCHES_COMMIT="main"
