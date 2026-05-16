@@ -155,7 +155,7 @@ jobs:
         kernel_version: ${{ steps.parse.outputs.kernel_version }}
 
     - name: Apply ABI Compare Bypass
-      if: false
+      if: true
       working-directory: ${{ github.workspace }}/kernel
       run: |
         if [[ "$ANDROID_VERSION" == "android12" && "$KERNEL_VERSION" == "5.10" ]]; then
@@ -251,6 +251,9 @@ jobs:
         SOURCE_DATE_EPOCH: ${{ env.SOURCE_DATE_EPOCH }}
         KBUILD_BUILD_TIMESTAMP: ${{ env.KBUILD_BUILD_TIMESTAMP }}
       uses: ./.github/actions/build-kernel
+
+    - name: Verify Kernel Config
+      uses: ./.github/actions/verify-kernel-config
 
     - name: Get Cache Stats
       uses: ./.github/actions/cache-stats

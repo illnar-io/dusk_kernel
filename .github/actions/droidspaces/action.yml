@@ -28,6 +28,15 @@ runs:
           echo "⚠ SYSVIPC kABI fix doesn't apply on this kernel version, skipping" >&2
         fi
 
+    - name: Export IPC symbols for module linkage
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel
+      run: |
+        echo >> "${{ github.workspace }}/kernel/common/ipc/namespace.c"
+        echo 'EXPORT_SYMBOL_GPL(put_ipc_ns);' >> "${{ github.workspace }}/kernel/common/ipc/namespace.c"
+        echo >> "${{ github.workspace }}/kernel/common/ipc/msgutil.c"
+        echo 'EXPORT_SYMBOL_GPL(init_ipc_ns);' >> "${{ github.workspace }}/kernel/common/ipc/msgutil.c"
+
     - name: Enable Configs
       shell: bash
       working-directory: ${{ github.workspace }}/kernel
@@ -51,8 +60,11 @@ runs:
         if [ "${{ inputs.kernel_version }}" != "5.10" ]; then
           echo 'CONFIG_IPC_NS=y' >> "$FRAGMENT"
           echo 'CONFIG_PID_NS=y' >> "$FRAGMENT"
+          echo 'CONFIG_UTS_NS=y' >> "$FRAGMENT"
+          echo 'CONFIG_CGROUP_DEVICE=y' >> "$FRAGMENT"
+          echo 'CONFIG_CGROUP_PIDS=y' >> "$FRAGMENT"
         else
-          echo "  ⚠ skipping CONFIG_IPC_NS and CONFIG_PID_NS (not compatible on kernel 5.10)" >&2
+          echo "  ⚠ skipping CONFIG_IPC_NS, CONFIG_PID_NS, CONFIG_UTS_NS, CONFIG_CGROUP_DEVICE, CONFIG_CGROUP_PIDS (not compatible on kernel 5.10)" >&2
           echo '# CONFIG_IPC_NS is not set' >> "$FRAGMENT"
           echo '# CONFIG_PID_NS is not set' >> "$FRAGMENT"
         fi

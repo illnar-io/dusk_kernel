@@ -39,7 +39,7 @@ runs:
           SUSFS_COMMIT="667368cf274311a62971671035738b154be1c062"
         fi
         if [ "${{ inputs.kernel_version }}" = "6.1" ]; then
-          SUSFS_COMMIT="e1c57040136760a57969fc6b1378cc936a257561"
+          SUSFS_COMMIT="ef16cbce5c5195988b9b630de85466148cbbcdef"
         fi
         if [ "${{ inputs.kernel_version }}" = "6.6" ]; then
           SUSFS_COMMIT="5009b9edee98fbe66b1a3cb22c603690d81b7817"
@@ -69,6 +69,8 @@ runs:
 
         # Try KernelSU-Next SUSFS patch first, fallback to KernelSU
         PATCH_NAMES=(
+          "ksun-4c9737a-susfs-v2.1.0-a14-6.1-ef16cbce.patch"
+          "ksun-293ca01-susfs-v2.1.0-a14-6.1-ef16cbce.patch"
           "ksun-e6ba52b-susfs-v2.1.0-a14-6.1-e1c57040.patch"
           "ksu-susfs-v2.1.0.patch"
         )
