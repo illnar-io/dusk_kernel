@@ -1,0 +1,72 @@
+name: 'Verify Kernel Config'
+description: 'Check generated .config for required options'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Verify Droidspaces and container configs
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        REQUIRED_OPTIONS=(
+          "CONFIG_SYSVIPC=y"
+          "CONFIG_POSIX_MQUEUE=y"
+          "CONFIG_DEVTMPFS=y"
+          "CONFIG_IPC_NS=y"
+          "CONFIG_PID_NS=y"
+          "CONFIG_UTS_NS=y"
+          "CONFIG_CGROUP_DEVICE=y"
+          "CONFIG_CGROUP_PIDS=y"
+          "CONFIG_USER_NS=y"
+          "CONFIG_OVERLAY_FS=y"
+          "CONFIG_NTSYNC=y"
+        )
+
+        # Try to locate the generated .config
+        CONFIG=""
+        BAZEL_CONFIG="${{ github.workspace }}/kernel/bazel-bin/common/kernel_aarch64/.config"
+        BUILD_SH_CONFIG="${{ github.workspace }}/kernel/out/${ANDROID_VERSION}-${KERNEL_VERSION}/.config"
+
+        if [ -f "$BAZEL_CONFIG" ]; then
+          CONFIG="$BAZEL_CONFIG"
+        elif [ -f "$BUILD_SH_CONFIG" ]; then
+          CONFIG="$BUILD_SH_CONFIG"
+        elif [ -f "${{ github.workspace }}/kernel/.config" ]; then
+          CONFIG="${{ github.workspace }}/kernel/.config"
+        fi
+
+        if [ -z "$CONFIG" ]; then
+          echo "::warning::Could not find generated .config — skipping verification"
+          exit 0
+        fi
+
+        echo "Verifying config: $CONFIG"
+        FAILED=false
+
+        for OPT in "${REQUIRED_OPTIONS[@]}"; do
+          NAME="${OPT%%=*}"
+          VALUE="${OPT#*=}"
+
+          if grep -q "^${NAME}=${VALUE}" "$CONFIG" 2>/dev/null; then
+            echo "  ✅ ${OPT}"
+          elif grep -q "^${NAME}=m" "$CONFIG" 2>/dev/null; then
+            echo "  ⚠ ${NAME}=m  (expected =y, módulo is acceptable)"
+          else
+            RAW=$(grep "^${NAME}=" "$CONFIG" 2>/dev/null || grep "^# ${NAME} is not set" "$CONFIG" 2>/dev/null || echo "NOT FOUND")
+            echo "  ❌ ${OPT}  — current: ${RAW}"
+            FAILED=true
+          fi
+        done
+
+        if [ "$FAILED" = "true" ]; then
+          echo ""
+          echo "❌ One or more required kernel configs are missing!"
+          echo "   The built kernel may not support Droidspaces containers."
+          echo "   Check the config fragment at: ${{ github.workspace }}/wild_gki.fragment"
+          echo "   Or check Kconfig existence in the kernel source."
+          exit 1
+        else
+          echo ""
+          echo "✅ All required kernel configs are present"
+        fi
