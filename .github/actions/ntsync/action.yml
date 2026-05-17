@@ -133,6 +133,8 @@ runs:
         if grep -rq "config NTSYNC\b" "$KERNEL_COMMON" 2>/dev/null; then
           echo '# NTSYNC - Windows NT sync primitives for Wine/Droidspaces' >> "$FRAGMENT"
           echo 'CONFIG_NTSYNC=y' >> "$FRAGMENT"
+          echo "NTSYNC_CONFIGURED=true" >> "$GITHUB_ENV"
         else
           echo "⚠ CONFIG_NTSYNC Kconfig not found in kernel tree, skipping" >&2
+          echo "NTSYNC_CONFIGURED=false" >> "$GITHUB_ENV"
         fi

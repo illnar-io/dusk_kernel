@@ -44,16 +44,30 @@ runs:
           if grep -q "^CONFIG_LSM=" "$DEFCONFIG" 2>/dev/null; then
             CURRENT_LSM=$(grep "^CONFIG_LSM=" "$DEFCONFIG" | cut -d= -f2 | tr -d '"')
             echo "CONFIG_LSM=\"${CURRENT_LSM},baseband_guard\"" >> "$FRAGMENT"
+            # Legacy build.sh (5.10, 5.15): merge_config.sh -m does NOT override
+            # existing values, so the fragment's CONFIG_LSM is ignored.
+            # Patch gki_defconfig directly for the legacy path.
+            if [ -f "build/build.sh" ]; then
+              echo "  → Legacy build system detected, patching gki_defconfig directly."
+              if grep -q "^CONFIG_LSM=" "$DEFCONFIG"; then
+                sed -i "s|^CONFIG_LSM=.*|CONFIG_LSM=\"${CURRENT_LSM},baseband_guard\"|" "$DEFCONFIG"
+              else
+                echo "CONFIG_LSM=\"${CURRENT_LSM},baseband_guard\"" >> "$DEFCONFIG"
+              fi
+              echo "  ✓ gki_defconfig updated with baseband_guard"
+            fi
           else
             echo 'CONFIG_LSM="landlock,lockdown,yama,loadpin,safesetid,integrity,selinux,smack,tomoyo,apparmor,bpf,baseband_guard"' >> "$FRAGMENT"
+            if [ -f "build/build.sh" ]; then
+              DEFAULT_LSM='CONFIG_LSM="landlock,lockdown,yama,loadpin,safesetid,integrity,selinux,smack,tomoyo,apparmor,bpf,baseband_guard"'
+              if grep -q "^CONFIG_LSM=" "$DEFCONFIG"; then
+                sed -i "s|^CONFIG_LSM=.*|${DEFAULT_LSM}|" "$DEFCONFIG"
+              else
+                echo "$DEFAULT_LSM" >> "$DEFCONFIG"
+              fi
+            fi
           fi
           echo "✓ BBG configured (CONFIG_BBG=y + baseband_guard in CONFIG_LSM)"
-
-          # NOTE: intentionally NOT patching gki_defconfig directly.
-          # Kleaf's savedefconfig check compares generated config against
-          # gki_defconfig and fails on any delta. The fragment approach
-          # (CONFIG_BBG=y in wild_gki.fragment) is sufficient for both
-          # build.sh and Bazel/Kleaf builds.
         else
           echo "⚠ BBG Kconfig not found in kernel tree, skipping" >&2
         fi

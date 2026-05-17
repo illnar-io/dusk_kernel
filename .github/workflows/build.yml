@@ -249,6 +249,8 @@ jobs:
 
     - name: Verify Kernel Config
       uses: ./.github/actions/verify-kernel-config
+      with:
+        kernel_version: ${{ steps.parse.outputs.kernel_version }}
 
     - name: Get Cache Stats
       uses: ./.github/actions/cache-stats
