@@ -18,8 +18,9 @@ runs:
       shell: bash
       if: |
         (inputs.kernel_version == '5.10' && inputs.android_version == 'android12') ||
-        (inputs.kernel_version == '5.15' && inputs.android_version == 'android13') || 
-        (inputs.kernel_version == '5.15' && inputs.android_version == 'android13')
+        (inputs.kernel_version == '5.10' && inputs.android_version == 'android13') ||
+        (inputs.kernel_version == '5.15' && inputs.android_version == 'android13') ||
+        (inputs.kernel_version == '5.15' && inputs.android_version == 'android14')
       working-directory: ${{ github.workspace }}
       run: |
         set -euo pipefail

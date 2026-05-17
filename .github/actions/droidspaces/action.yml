@@ -32,10 +32,27 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}/kernel
       run: |
-        echo >> "${{ github.workspace }}/kernel/common/ipc/namespace.c"
-        echo 'EXPORT_SYMBOL_GPL(put_ipc_ns);' >> "${{ github.workspace }}/kernel/common/ipc/namespace.c"
-        echo >> "${{ github.workspace }}/kernel/common/ipc/msgutil.c"
-        echo 'EXPORT_SYMBOL_GPL(init_ipc_ns);' >> "${{ github.workspace }}/kernel/common/ipc/msgutil.c"
+        set -euo pipefail
+        # Only add EXPORT_SYMBOL_GPL if the symbol is not already exported in
+        # the same file, which avoids duplicate-export redefinition errors that
+        # break the build on kernels (5.10, 5.15, 6.1) where these symbols are
+        # already exported in-tree.
+        NAMESPACE_FILE="${{ github.workspace }}/kernel/common/ipc/namespace.c"
+        MSGUTIL_FILE="${{ github.workspace }}/kernel/common/ipc/msgutil.c"
+        if ! grep -q 'EXPORT_SYMBOL_GPL(put_ipc_ns)' "$NAMESPACE_FILE" 2>/dev/null; then
+          echo "Adding EXPORT_SYMBOL_GPL(put_ipc_ns) to ipc/namespace.c"
+          echo >> "$NAMESPACE_FILE"
+          echo 'EXPORT_SYMBOL_GPL(put_ipc_ns);' >> "$NAMESPACE_FILE"
+        else
+          echo "put_ipc_ns already exported in ipc/namespace.c, skipping"
+        fi
+        if ! grep -q 'EXPORT_SYMBOL_GPL(init_ipc_ns)' "$MSGUTIL_FILE" 2>/dev/null; then
+          echo "Adding EXPORT_SYMBOL_GPL(init_ipc_ns) to ipc/msgutil.c"
+          echo >> "$MSGUTIL_FILE"
+          echo 'EXPORT_SYMBOL_GPL(init_ipc_ns);' >> "$MSGUTIL_FILE"
+        else
+          echo "init_ipc_ns already exported in ipc/msgutil.c, skipping"
+        fi
 
     - name: Enable Configs
       shell: bash
