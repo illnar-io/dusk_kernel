@@ -17,10 +17,6 @@ on:
         required: false
         type: boolean
         default: true
-      ksu_compat:
-        required: false
-        type: boolean
-        default: false
       variant:
         required: false
         type: string
@@ -128,7 +124,6 @@ jobs:
       with:
         kernel_version: ${{ steps.parse.outputs.kernel_version }}
         android_version: ${{ steps.parse.outputs.android_version }}
-        ksu_compat: ${{ inputs.ksu_compat }}
 
     - name: Phase 2 Patches
       uses: ./.github/actions/phase2-patches

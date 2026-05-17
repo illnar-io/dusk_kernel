@@ -7,10 +7,6 @@ inputs:
   android_version:
     description: "Android version (e.g., android14)"
     required: true
-  ksu_compat:
-    description: "KSU compat mode - keep debug enabled"
-    required: false
-    default: "false"
 
 runs:
   using: "composite"

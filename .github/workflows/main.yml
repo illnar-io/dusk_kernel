@@ -55,10 +55,6 @@ on:
         description: "Include SUSFS"
         type: boolean
         default: true
-      ksu_compat:
-        description: "KSU compat mode (enable for bootloop recovery)"
-        type: boolean
-        default: false
       variant:
         description: "Build Variant"
         type: choice
@@ -84,7 +80,6 @@ jobs:
       config_file: .github/kernel-config/a12-5.10.json
       root: ${{ inputs.root }}
       susfs: ${{ inputs.susfs }}
-      ksu_compat: ${{ inputs.ksu_compat }}
       variant: ${{ inputs.variant || 'Normal' }}
       use_repo: ${{ inputs.use_repo }}
     secrets: inherit
@@ -96,7 +91,6 @@ jobs:
       config_file: .github/kernel-config/a13-5.10.json
       root: ${{ inputs.root }}
       susfs: ${{ inputs.susfs }}
-      ksu_compat: ${{ inputs.ksu_compat }}
       variant: ${{ inputs.variant || 'Normal' }}
       use_repo: ${{ inputs.use_repo }}
     secrets: inherit
@@ -108,7 +102,6 @@ jobs:
       config_file: .github/kernel-config/a13-5.15.json
       root: ${{ inputs.root }}
       susfs: ${{ inputs.susfs }}
-      ksu_compat: ${{ inputs.ksu_compat }}
       variant: ${{ inputs.variant || 'Normal' }}
       use_repo: ${{ inputs.use_repo }}
     secrets: inherit
@@ -120,7 +113,6 @@ jobs:
       config_file: .github/kernel-config/a14-5.15.json
       root: ${{ inputs.root }}
       susfs: ${{ inputs.susfs }}
-      ksu_compat: ${{ inputs.ksu_compat }}
       variant: ${{ inputs.variant || 'Normal' }}
       use_repo: ${{ inputs.use_repo }}
     secrets: inherit
@@ -132,7 +124,6 @@ jobs:
       config_file: .github/kernel-config/a14-6.1.json
       root: ${{ inputs.root }}
       susfs: ${{ inputs.susfs }}
-      ksu_compat: ${{ inputs.ksu_compat }}
       variant: ${{ inputs.variant || 'Normal' }}
       use_repo: ${{ inputs.use_repo }}
     secrets: inherit
@@ -144,7 +135,6 @@ jobs:
       config_file: .github/kernel-config/a15-6.6.json
       root: ${{ inputs.root }}
       susfs: ${{ inputs.susfs }}
-      ksu_compat: ${{ inputs.ksu_compat }}
       variant: ${{ inputs.variant || 'Normal' }}
       use_repo: ${{ inputs.use_repo }}
     secrets: inherit
@@ -156,7 +146,6 @@ jobs:
       config_file: .github/kernel-config/a16-6.12.json
       root: ${{ inputs.root }}
       susfs: ${{ inputs.susfs }}
-      ksu_compat: ${{ inputs.ksu_compat }}
       variant: ${{ inputs.variant || 'Normal' }}
       use_repo: ${{ inputs.use_repo }}
     secrets: inherit
@@ -342,7 +331,6 @@ jobs:
 
         ROOT="${{ inputs.root }}"
         SUSFS="${{ inputs.susfs }}"
-        KSU_COMPAT="${{ inputs.ksu_compat }}"
         KSUN_COMMIT="4c9737aed458843e920de95b0bcad56cf790663b"
         KSUN_TAG="dev"
         KSU_COMMIT="main"
@@ -367,9 +355,6 @@ jobs:
           echo "| Root Solution | ${ROOT} |"
           if [[ "$SUSFS" == "true" ]]; then
             echo "| SUSFS | ${SUSFS_VERSION} |"
-          fi
-          if [[ "$KSU_COMPAT" == "true" ]]; then
-            echo "| KSU Compat | Enabled |"
           fi
           echo "| AnyKernel3 Commit | ${AK3_COMMIT} |"
           echo "| Kernel Patches Commit | ${PATCHES_COMMIT} |"
