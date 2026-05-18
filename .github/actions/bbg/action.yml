@@ -47,7 +47,9 @@ runs:
             # Legacy build.sh (5.10, 5.15): merge_config.sh -m does NOT override
             # existing values, so the fragment's CONFIG_LSM is ignored.
             # Patch gki_defconfig directly for the legacy path.
-            if [ -f "build/build.sh" ]; then
+            # Detect legacy build by absence of Kleaf's tools/bazel
+            # (build/build.sh exists in ALL kernel trees, not just legacy).
+            if [ ! -f "tools/bazel" ]; then
               echo "  → Legacy build system detected, patching gki_defconfig directly."
               if grep -q "^CONFIG_LSM=" "$DEFCONFIG"; then
                 sed -i "s|^CONFIG_LSM=.*|CONFIG_LSM=\"${CURRENT_LSM},baseband_guard\"|" "$DEFCONFIG"
@@ -58,7 +60,7 @@ runs:
             fi
           else
             echo 'CONFIG_LSM="landlock,lockdown,yama,loadpin,safesetid,integrity,selinux,smack,tomoyo,apparmor,bpf,baseband_guard"' >> "$FRAGMENT"
-            if [ -f "build/build.sh" ]; then
+            if [ ! -f "tools/bazel" ]; then
               DEFAULT_LSM='CONFIG_LSM="landlock,lockdown,yama,loadpin,safesetid,integrity,selinux,smack,tomoyo,apparmor,bpf,baseband_guard"'
               if grep -q "^CONFIG_LSM=" "$DEFCONFIG"; then
                 sed -i "s|^CONFIG_LSM=.*|${DEFAULT_LSM}|" "$DEFCONFIG"
