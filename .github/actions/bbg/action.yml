@@ -32,42 +32,38 @@ runs:
       working-directory: ${{ github.workspace }}/kernel
       run: |
         FRAGMENT="${{ github.workspace }}/wild_gki.fragment"
-        # Only add CONFIG_BBG if the Kconfig was installed by setup.sh
-        # Use -R to follow symlinks (BBG Kconfig lives via common/security/baseband-guard → Baseband-guard)
         if grep -Rq "config BBG\b" common 2>/dev/null; then
           echo "CONFIG_BBG=y" >> "$FRAGMENT"
-          # Append baseband_guard to CONFIG_LSM in the fragment.
-          # The defconfig (or Kconfig default) sets CONFIG_LSM without baseband_guard,
-          # and BBG's Makefile aborts if CONFIG_LSM doesn't include it.
-          # Try reading from gki_defconfig first, otherwise use the standard default.
           DEFCONFIG="${{ github.workspace }}/kernel/common/arch/arm64/configs/gki_defconfig"
           if grep -q "^CONFIG_LSM=" "$DEFCONFIG" 2>/dev/null; then
             CURRENT_LSM=$(grep "^CONFIG_LSM=" "$DEFCONFIG" | cut -d= -f2 | tr -d '"')
-            echo "CONFIG_LSM=\"${CURRENT_LSM},baseband_guard\"" >> "$FRAGMENT"
-            # Legacy build.sh (5.10, 5.15): merge_config.sh -m does NOT override
-            # existing values, so the fragment's CONFIG_LSM is ignored.
-            # Patch gki_defconfig directly for the legacy path.
-            # Detect legacy build by absence of Kleaf's tools/bazel
-            # (build/build.sh exists in ALL kernel trees, not just legacy).
-            if [ ! -f "tools/bazel" ]; then
-              echo "  → Legacy build system detected, patching gki_defconfig directly."
-              if grep -q "^CONFIG_LSM=" "$DEFCONFIG"; then
-                sed -i "s|^CONFIG_LSM=.*|CONFIG_LSM=\"${CURRENT_LSM},baseband_guard\"|" "$DEFCONFIG"
-              else
-                echo "CONFIG_LSM=\"${CURRENT_LSM},baseband_guard\"" >> "$DEFCONFIG"
-              fi
-              echo "  ✓ gki_defconfig updated with baseband_guard"
-            fi
+            LSM_VALUE="${CURRENT_LSM},baseband_guard"
           else
-            echo 'CONFIG_LSM="landlock,lockdown,yama,loadpin,safesetid,integrity,selinux,smack,tomoyo,apparmor,bpf,baseband_guard"' >> "$FRAGMENT"
-            if [ ! -f "tools/bazel" ]; then
-              DEFAULT_LSM='CONFIG_LSM="landlock,lockdown,yama,loadpin,safesetid,integrity,selinux,smack,tomoyo,apparmor,bpf,baseband_guard"'
-              if grep -q "^CONFIG_LSM=" "$DEFCONFIG"; then
-                sed -i "s|^CONFIG_LSM=.*|${DEFAULT_LSM}|" "$DEFCONFIG"
-              else
-                echo "$DEFAULT_LSM" >> "$DEFCONFIG"
-              fi
+            LSM_VALUE="landlock,lockdown,yama,loadpin,safesetid,integrity,selinux,smack,tomoyo,apparmor,bpf,baseband_guard"
+          fi
+          echo "CONFIG_LSM=\"${LSM_VALUE}\"" >> "$FRAGMENT"
+          # Legacy build.sh (5.10, 5.15): merge_config.sh -m does NOT override
+          # existing values, so the fragment's CONFIG_LSM is ignored.
+          # Patch gki_defconfig directly for the legacy path, then run
+          # savedefconfig so that check_defconfig finds an exact match
+          # (savedefconfig sorts entries alphabetically).
+          if [ ! -f "tools/bazel" ]; then
+            echo "  → Legacy build system detected, patching gki_defconfig directly."
+            if grep -q "^CONFIG_LSM=" "$DEFCONFIG"; then
+              sed -i "s|^CONFIG_LSM=.*|CONFIG_LSM=\"${LSM_VALUE}\"|" "$DEFCONFIG"
+            else
+              echo "CONFIG_LSM=\"${LSM_VALUE}\"" >> "$DEFCONFIG"
             fi
+            cd common || exit 1
+            mkdir -p /tmp/bbg_sort
+            if make ARCH=arm64 O=/tmp/bbg_sort gki_defconfig savedefconfig &>/dev/null && [ -f /tmp/bbg_sort/defconfig ]; then
+              cp /tmp/bbg_sort/defconfig arch/arm64/configs/gki_defconfig
+              echo "  ✓ gki_defconfig sorted with savedefconfig"
+            else
+              echo "  ⚠ savedefconfig sorting failed, check_defconfig may fail during build" >&2
+            fi
+            cd ..
+            echo "  ✓ gki_defconfig updated with baseband_guard"
           fi
           echo "✓ BBG configured (CONFIG_BBG=y + baseband_guard in CONFIG_LSM)"
         else
