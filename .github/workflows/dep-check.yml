@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
   issues: write
+  actions: write
 
 jobs:
   check:
@@ -176,10 +177,45 @@ jobs:
             echo "- Commit-pinned deps show exact status above."
             echo "- Branch-tracked deps show the latest HEAD; manual review needed."
             echo "- To update commit pins, edit the relevant action file and push."
-            echo "- [Trigger a build](${{ github.server_url }}/${{ github.repository }}/actions/workflows/main.yml) after updating."
           } > /tmp/report.md
 
           echo "has_updates=${HAS_UPDATES}" >> $GITHUB_OUTPUT
+
+      - name: Dispatch builds on updates
+        if: steps.report.outputs.has_updates == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ARGS="-f release_type=Action -f susfs=true -f use_repo=true"
+          ARGS="$ARGS -f root=KernelSU-Next -f variant=Normal"
+
+          # Map SUSFS updates to their kernel build inputs.
+          # GHA evaluates ${{ }} at parse time, so each check is explicit.
+          check_susfs() {
+            local update="$1" input="$2"
+            if [ "$update" = "true" ]; then
+              ARGS="$ARGS -f $input=true"
+              echo "  → ${input} set"
+            fi
+          }
+
+          check_susfs "${{ steps.susfs_a12_5_10.outputs.updated }}" "build_a12_5_10"
+          check_susfs "${{ steps.susfs_a13_5_10.outputs.updated }}" "build_a13_5_10"
+          check_susfs "${{ steps.susfs_a13_5_15.outputs.updated }}" "build_a13_5_15"
+          check_susfs "${{ steps.susfs_a14_5_15.outputs.updated }}" "build_a14_5_15"
+          check_susfs "${{ steps.susfs_a14_6_1.outputs.updated }}"  "build_a14_6_1"
+          check_susfs "${{ steps.susfs_a15_6_6.outputs.updated }}"  "build_a15_6_6"
+          check_susfs "${{ steps.susfs_a16_6_12.outputs.updated }}" "build_a16_6_12"
+
+          if [ "${{ steps.ksu.outputs.updated }}" = "true" ]; then
+            ARGS="$ARGS -f build_a14_6_1=true"
+            echo "  → KernelSU-Next updated → build_a14_6_1=true (primary)"
+          fi
+
+          echo "Running: gh workflow run main.yml --ref main $ARGS"
+          gh workflow run main.yml --ref main $ARGS
 
       - name: Create or update issue
         if: steps.report.outputs.has_updates == 'true'
