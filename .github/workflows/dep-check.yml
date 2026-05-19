@@ -181,41 +181,70 @@ jobs:
 
           echo "has_updates=${HAS_UPDATES}" >> $GITHUB_OUTPUT
 
+          # Write per-dependency trigger flags for the dispatch step
+          write_flag() { echo "$1" > "/tmp/trigger-$2"; }
+          write_flag "${{ steps.susfs_a12_5_10.outputs.updated }}" "susfs_a12_5_10"
+          write_flag "${{ steps.susfs_a13_5_10.outputs.updated }}" "susfs_a13_5_10"
+          write_flag "${{ steps.susfs_a13_5_15.outputs.updated }}" "susfs_a13_5_15"
+          write_flag "${{ steps.susfs_a14_5_15.outputs.updated }}" "susfs_a14_5_15"
+          write_flag "${{ steps.susfs_a14_6_1.outputs.updated }}"  "susfs_a14_6_1"
+          write_flag "${{ steps.susfs_a15_6_6.outputs.updated }}"  "susfs_a15_6_6"
+          write_flag "${{ steps.susfs_a16_6_12.outputs.updated }}" "susfs_a16_6_12"
+          write_flag "${{ steps.ksu.outputs.updated }}" "ksu"
+
       - name: Dispatch builds on updates
         if: steps.report.outputs.has_updates == 'true'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          ARGS="-f release_type=Action -f susfs=true -f use_repo=true"
-          ARGS="$ARGS -f root=KernelSU-Next -f variant=Normal"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const inputs = {
+              release_type: 'Action', susfs: 'true', use_repo: 'true',
+              root: 'KernelSU-Next', variant: 'Normal',
+            };
 
-          # Map SUSFS updates to their kernel build inputs.
-          # GHA evaluates ${{ }} at parse time, so each check is explicit.
-          check_susfs() {
-            local update="$1" input="$2"
-            if [ "$update" = "true" ]; then
-              ARGS="$ARGS -f $input=true"
-              echo "  → ${input} set"
-            fi
-          }
+            const susfsMap = {
+              susfs_a12_5_10: 'build_a12_5_10', susfs_a13_5_10: 'build_a13_5_10',
+              susfs_a13_5_15: 'build_a13_5_15', susfs_a14_5_15: 'build_a14_5_15',
+              susfs_a14_6_1:  'build_a14_6_1',  susfs_a15_6_6:  'build_a15_6_6',
+              susfs_a16_6_12: 'build_a16_6_12',
+            };
 
-          check_susfs "${{ steps.susfs_a12_5_10.outputs.updated }}" "build_a12_5_10"
-          check_susfs "${{ steps.susfs_a13_5_10.outputs.updated }}" "build_a13_5_10"
-          check_susfs "${{ steps.susfs_a13_5_15.outputs.updated }}" "build_a13_5_15"
-          check_susfs "${{ steps.susfs_a14_5_15.outputs.updated }}" "build_a14_5_15"
-          check_susfs "${{ steps.susfs_a14_6_1.outputs.updated }}"  "build_a14_6_1"
-          check_susfs "${{ steps.susfs_a15_6_6.outputs.updated }}"  "build_a15_6_6"
-          check_susfs "${{ steps.susfs_a16_6_12.outputs.updated }}" "build_a16_6_12"
+            let triggered = false;
 
-          if [ "${{ steps.ksu.outputs.updated }}" = "true" ]; then
-            ARGS="$ARGS -f build_a14_6_1=true"
-            echo "  → KernelSU-Next updated → build_a14_6_1=true (primary)"
-          fi
+            for (const [stepId, buildInput] of Object.entries(susfsMap)) {
+              try {
+                const flag = fs.readFileSync(`/tmp/trigger-${stepId}`, 'utf8').trim();
+                if (flag === 'true') {
+                  inputs[buildInput] = 'true';
+                  triggered = true;
+                  console.log(`  ${buildInput}=true`);
+                }
+              } catch {}
+            }
 
-          echo "Running: gh workflow run main.yml --ref main $ARGS"
-          gh workflow run main.yml --ref main $ARGS
+            try {
+              const ksuFlag = fs.readFileSync('/tmp/trigger-ksu', 'utf8').trim();
+              if (ksuFlag === 'true') {
+                inputs.build_a14_6_1 = 'true';
+                triggered = true;
+                console.log('  build_a14_6_1=true (KSU updated, primary)');
+              }
+            } catch {}
+
+            if (!triggered) {
+              console.log('No updates to dispatch to, skipping');
+              return;
+            }
+
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'main.yml',
+              ref: 'main',
+              inputs,
+            });
+            console.log(`Dispatched main.yml: ${JSON.stringify(inputs)}`);
 
       - name: Create or update issue
         if: steps.report.outputs.has_updates == 'true'
