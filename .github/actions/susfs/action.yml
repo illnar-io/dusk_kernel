@@ -67,8 +67,11 @@ runs:
         PATCH_DIR="${{ github.workspace }}/kernel_patches/wild"
         mkdir -p "$PATCH_DIR"
 
-        # Try KernelSU-Next SUSFS patch first, fallback to KernelSU
+        # WildKernels moved ksun-* patches from wild/ to wild/archived/
+        # and added a consolidated patch. Try consolidated first, then
+        # individual archived patches (tried at both locations for safety).
         PATCH_NAMES=(
+          "ksun-5a4a718-susfs-f7ae19ef-gki-android14-6.1.patch"
           "ksun-4c9737a-susfs-v2.1.0-a14-6.1-ef16cbce.patch"
           "ksun-293ca01-susfs-v2.1.0-a14-6.1-ef16cbce.patch"
           "ksun-e6ba52b-susfs-v2.1.0-a14-6.1-e1c57040.patch"
@@ -79,10 +82,17 @@ runs:
           PATCH_PATH="${PATCH_DIR}/${PATCH_NAME}"
           if [ ! -f "$PATCH_PATH" ]; then
             echo "Downloading ${PATCH_NAME}..."
-            if curl -LfsS --retry 3 --retry-delay 5 -o "$PATCH_PATH" \
-              "https://raw.githubusercontent.com/WildKernels/kernel_patches/main/wild/${PATCH_NAME}" 2>/dev/null; then
-              echo "  Downloaded"
-            else
+            DOWNLOADED=false
+            for DL_URL in \
+              "https://raw.githubusercontent.com/WildKernels/kernel_patches/main/wild/archived/${PATCH_NAME}" \
+              "https://raw.githubusercontent.com/WildKernels/kernel_patches/main/wild/${PATCH_NAME}"; do
+              if curl -LfsS --retry 3 --retry-delay 5 -o "$PATCH_PATH" "$DL_URL" 2>/dev/null; then
+                echo "  Downloaded"
+                DOWNLOADED=true
+                break
+              fi
+            done
+            if [ "$DOWNLOADED" = false ]; then
               echo "  ⚠ Not available, skipping"
               continue
             fi
