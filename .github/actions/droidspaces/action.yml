@@ -71,14 +71,15 @@ runs:
         CONFIG_DEVTMPFS=y
         EOF
 
-        # IPC_NS, PID_NS: skip on 5.10 — Android GKI 5.10 has header stubs
-        # that conflict with real implementations when these namespaces are
-        # enabled (same pattern as CONFIG_USER_NS).
+        # IPC_NS: Kconfig default is y on all GKI kernels — don't disable it.
+        # On 5.10, setting # CONFIG_IPC_NS is not set causes a redefinition
+        # between the static inline stub in ipc/util.h (inside #else of
+        # #ifdef CONFIG_SYSVIPC) and the real function in ipc/msg.c.
+        # PID_NS is also safe to skip on 5.10 if the build doesn't need it.
         if [ "${{ inputs.kernel_version }}" != "5.10" ]; then
           echo 'CONFIG_IPC_NS=y' >> "$FRAGMENT"
           echo 'CONFIG_PID_NS=y' >> "$FRAGMENT"
         else
-          echo "  ⚠ skipping CONFIG_IPC_NS and CONFIG_PID_NS (not compatible on kernel 5.10)" >&2
-          echo '# CONFIG_IPC_NS is not set' >> "$FRAGMENT"
+          echo "  ⚠ skipping CONFIG_IPC_NS and CONFIG_PID_NS on kernel 5.10 (IPC_NS defaults to y in Kconfig)" >&2
           echo '# CONFIG_PID_NS is not set' >> "$FRAGMENT"
         fi

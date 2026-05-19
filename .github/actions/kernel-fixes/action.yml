@@ -83,42 +83,6 @@ runs:
         sed -i 's/\s*vm_flags_clear(new_vma, VM_PAD_MASK);/                new_vma->vm_flags \&= ~VM_PAD_MASK;/' mm/mmap.c
         echo "MMAP_VM_FLAGS_FIX=true" >> "$GITHUB_ENV"
 
-    - name: 'Fix 5.10 msg_init_ns redefinition when CONFIG_SYSVIPC=y + IPC_NS=n'
-      shell: bash
-      if: ${{ inputs.kernel_version == '5.10' }}
-      working-directory: ${{ github.workspace }}/kernel/common
-      run: |
-        set -euo pipefail
-        MSG_FILE="ipc/msg.c"
-        if grep -q '^void msg_init_ns(struct ipc_namespace \*ns)' "$MSG_FILE" 2>/dev/null; then
-          echo "[INFO] Wrapping msg_init_ns with #ifdef CONFIG_IPC_NS to prevent redefinition vs ipc/util.h stub."
-          awk '
-          /^void msg_init_ns(struct ipc_namespace \*ns)/ {
-              print "#ifdef CONFIG_IPC_NS"
-              print
-              in_func = 1
-              brace_depth = 0
-              if (index($0, "{") > 0) brace_depth++
-              next
-          }
-          in_func {
-              if (index($0, "{") > 0) brace_depth++
-              if (index($0, "}") > 0) brace_depth--
-              print
-              if (brace_depth <= 0) {
-                  print "#endif /* CONFIG_IPC_NS */"
-                  in_func = 0
-              }
-              next
-          }
-          { print }
-          ' "$MSG_FILE" > "$MSG_FILE.tmp" && mv "$MSG_FILE.tmp" "$MSG_FILE"
-          echo "MSG_INIT_NS_FIX=true" >> "$GITHUB_ENV"
-        else
-          echo "[INFO] msg_init_ns pattern not found (already fixed or different layout)."
-          echo "MSG_INIT_NS_FIX=not_needed" >> "$GITHUB_ENV"
-        fi
-
     - name: 'Fix 6.6 BTF inconsistent prototype (pahole version mismatch)'
       shell: bash
       if: ${{ inputs.kernel_version == '6.6' }}
@@ -180,14 +144,6 @@ runs:
           echo "- mm/mmap.c VM_PAD_MASK fix: applied" >> "$GITHUB_STEP_SUMMARY"
         else
           echo "- mm/mmap.c VM_PAD_MASK fix: not applicable" >> "$GITHUB_STEP_SUMMARY"
-        fi
-
-        if [ "${MSG_INIT_NS_FIX:-not_applicable}" = "true" ]; then
-          echo "- msg_init_ns CONFIG_IPC_NS guard: applied" >> "$GITHUB_STEP_SUMMARY"
-        elif [ "${MSG_INIT_NS_FIX:-not_applicable}" = "not_needed" ]; then
-          echo "- msg_init_ns CONFIG_IPC_NS guard: not needed" >> "$GITHUB_STEP_SUMMARY"
-        else
-          echo "- msg_init_ns CONFIG_IPC_NS guard: not applicable" >> "$GITHUB_STEP_SUMMARY"
         fi
 
         if [ "${BTF_PAHOLE_FIX:-not_applicable}" = "true" ]; then
