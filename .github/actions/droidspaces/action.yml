@@ -71,15 +71,36 @@ runs:
         CONFIG_DEVTMPFS=y
         EOF
 
-        # IPC_NS: Kconfig default is y on all GKI kernels — don't disable it.
-        # On 5.10, setting # CONFIG_IPC_NS is not set causes a redefinition
-        # between the static inline stub in ipc/util.h (inside #else of
-        # #ifdef CONFIG_SYSVIPC) and the real function in ipc/msg.c.
-        # PID_NS is also safe to skip on 5.10 if the build doesn't need it.
-        if [ "${{ inputs.kernel_version }}" != "5.10" ]; then
-          echo 'CONFIG_IPC_NS=y' >> "$FRAGMENT"
-          echo 'CONFIG_PID_NS=y' >> "$FRAGMENT"
-        else
-          echo "  ⚠ skipping CONFIG_IPC_NS and CONFIG_PID_NS on kernel 5.10 (IPC_NS defaults to y in Kconfig)" >&2
-          echo '# CONFIG_PID_NS is not set' >> "$FRAGMENT"
+        # IPC_NS: default is y in Kconfig (when NAMESPACES=y), but
+        # merge_config.sh -m does NOT override existing values on the
+        # legacy build system. On 5.10, msg.c defines msg_init_ns
+        # unconditionally (outside #ifdef CONFIG_IPC_NS), and the
+        # static inline stub in ipc_namespace.h (#else of IPC_NS)
+        # causes a redefinition if IPC_NS ends up as n.
+        # Set it explicitly for all versions.
+        echo 'CONFIG_IPC_NS=y' >> "$FRAGMENT"
+        echo 'CONFIG_PID_NS=y' >> "$FRAGMENT"
+
+        # Legacy build.sh (5.10): merge_config.sh -m does NOT override
+        # existing values in .config, and some kernels have
+        # # CONFIG_PID_NS is not set in gki_defconfig. However, IPC_NS
+        # is NOT in 5.10's gki_defconfig, so the fragment setting works.
+        # For safety, also patch gki_defconfig for 5.10 (like BBG does
+        # for CONFIG_LSM) so that savedefconfig includes it.
+        if [ "${{ inputs.kernel_version }}" = "5.10" ]; then
+          if [ -f "common/arch/arm64/configs/gki_defconfig" ]; then
+            if ! grep -q 'CONFIG_IPC_NS=y' common/arch/arm64/configs/gki_defconfig; then
+              echo 'CONFIG_IPC_NS=y' >> common/arch/arm64/configs/gki_defconfig
+            fi
+            if grep -q '# CONFIG_PID_NS is not set' common/arch/arm64/configs/gki_defconfig; then
+              sed -i '/# CONFIG_PID_NS is not set/d' common/arch/arm64/configs/gki_defconfig
+              echo 'CONFIG_PID_NS=y' >> common/arch/arm64/configs/gki_defconfig
+            fi
+            cd common
+            mkdir -p /tmp/droidspaces_sort
+            if make ARCH=arm64 O=/tmp/droidspaces_sort gki_defconfig savedefconfig &>/dev/null && [ -f /tmp/droidspaces_sort/defconfig ]; then
+              cp /tmp/droidspaces_sort/defconfig arch/arm64/configs/gki_defconfig
+            fi
+            cd "${{ github.workspace }}/kernel"
+          fi
         fi
