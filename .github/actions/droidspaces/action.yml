@@ -81,35 +81,16 @@ runs:
         echo 'CONFIG_IPC_NS=y' >> "$FRAGMENT"
         echo 'CONFIG_PID_NS=y' >> "$FRAGMENT"
 
-        # Legacy build.sh (5.10): build.config sources GKI_DEFCONFIG_FRAGMENT
-        # as a shell script, so fragment lines like CONFIG_IPC_NS=y become
-        # unused shell vars — they never reach .config. We MUST patch
-        # gki_defconfig directly.
-        # Run savedefconfig first to re-sort (check_defconfig diffs sorted),
-        # then re-add IPC_NS/PID_NS at the correct alphabetical position
-        # (before CONFIG_IP_*) if savedefconfig removed them (matching
-        # Kconfig default y). Unset CC/HOSTCC because make gki_defconfig
-        # runs the host conf binary (needs gcc), not the cross-compiler.
+        # Legacy build.sh (5.10) sources the fragment as a shell script, so
+        # fragment options like CONFIG_IPC_NS=y never reach .config.  The
+        # build-kernel action now uses merge_config.sh in POST_DEFCONFIG_CMDS
+        # to properly apply the fragment, and overrides check_defconfig to
+        # avoid spurious diffs with gki_defconfig.
+        # We only need to remove the explicit # CONFIG_PID_NS is not set so
+        # that merge_config.sh can set PID_NS=y from the fragment.
         if [ "${{ inputs.kernel_version }}" = "5.10" ]; then
-          if [ -f "common/arch/arm64/configs/gki_defconfig" ]; then
-            (unset CC HOSTCC HOSTCXX; \
-             cd common && \
-             mkdir -p /tmp/droidspaces_sort && \
-             make ARCH=arm64 O=/tmp/droidspaces_sort gki_defconfig savedefconfig && \
-             cp /tmp/droidspaces_sort/defconfig arch/arm64/configs/gki_defconfig)
-            # re-add IPC_NS and PID_NS if savedefconfig removed them
-            cd common
-            # Remove explicit disable lines for PID_NS
-            if grep -q '# CONFIG_PID_NS is not set' arch/arm64/configs/gki_defconfig; then
-              sed -i '/# CONFIG_PID_NS is not set/d' arch/arm64/configs/gki_defconfig
-            fi
-            # Insert IPC_NS and PID_NS before first CONFIG_IP_ line if missing
-            for cfg in CONFIG_IPC_NS=y CONFIG_PID_NS=y; do
-              opt="${cfg%%=*}"
-              if ! grep -q "^${opt}=y" arch/arm64/configs/gki_defconfig; then
-                sed -i "0,/^CONFIG_IP_/s/^CONFIG_IP_/${cfg}\n&/" arch/arm64/configs/gki_defconfig
-              fi
-            done
-            cd "${{ github.workspace }}/kernel"
+          if [ -f "common/arch/arm64/configs/gki_defconfig" ] && grep -q '# CONFIG_PID_NS is not set' "common/arch/arm64/configs/gki_defconfig"; then
+            sed -i '/# CONFIG_PID_NS is not set/d' "common/arch/arm64/configs/gki_defconfig"
+            echo "  ✓ removed stale # CONFIG_PID_NS is not set from gki_defconfig"
           fi
         fi
