@@ -91,14 +91,20 @@ runs:
             sed -i '/# CONFIG_PID_NS is not set/d' "$DEFCONFIG"
             echo "  ✓ removed stale # CONFIG_PID_NS is not set from gki_defconfig"
 
-            # Add SYSVIPC so IPC_NS dependency (SYSVIPC || POSIX_MQUEUE)
-            # is satisfied.  IPC_NS and PID_NS then default to y by Kconfig.
-            if grep -q "^CONFIG_SYSVIPC=" "$DEFCONFIG"; then
-              sed -i 's/^#\?CONFIG_SYSVIPC[ =].*/CONFIG_SYSVIPC=y/' "$DEFCONFIG"
-            else
-              echo "CONFIG_SYSVIPC=y" >> "$DEFCONFIG"
-            fi
-            echo "  ✓ CONFIG_SYSVIPC=y added to gki_defconfig"
+            # IPC_NS depends on SYSVIPC || POSIX_MQUEUE.  Stock gki_defconfig
+            # has neither, so IPC_NS is forced n by Kconfig despite default y.
+            # The static inline stubs for msg_init_ns (ipc/msg.c) and
+            # mq_init_ns/mq_clear_sbinfo/mq_put_mnt (ipc/mqueue.c) conflict
+            # with the unconditional definitions.  Enable both dependencies.
+            for cfg in CONFIG_SYSVIPC=y CONFIG_POSIX_MQUEUE=y; do
+              opt="${cfg%%=*}"
+              if grep -q "^$opt=" "$DEFCONFIG" || grep -q "^# $opt is not set" "$DEFCONFIG"; then
+                sed -i "s|^#\?$opt[ =].*|$cfg|" "$DEFCONFIG"
+              else
+                echo "$cfg" >> "$DEFCONFIG"
+              fi
+              echo "  ✓ $cfg added to gki_defconfig"
+            done
 
             # Re-sort via savedefconfig so check_defconfig is satisfied.
             cd "${{ github.workspace }}/kernel/common"
