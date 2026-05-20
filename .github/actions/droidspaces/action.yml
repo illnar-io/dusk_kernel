@@ -96,7 +96,7 @@ runs:
             # The static inline stubs for msg_init_ns (ipc/msg.c) and
             # mq_init_ns/mq_clear_sbinfo/mq_put_mnt (ipc/mqueue.c) conflict
             # with the unconditional definitions.  Enable both dependencies.
-            for cfg in CONFIG_SYSVIPC=y CONFIG_POSIX_MQUEUE=y; do
+            for cfg in CONFIG_SYSVIPC=y CONFIG_POSIX_MQUEUE=y CONFIG_DEVTMPFS=y; do
               opt="${cfg%%=*}"
               if grep -q "^$opt=" "$DEFCONFIG" || grep -q "^# $opt is not set" "$DEFCONFIG"; then
                 sed -i "s|^#\?$opt[ =].*|$cfg|" "$DEFCONFIG"
