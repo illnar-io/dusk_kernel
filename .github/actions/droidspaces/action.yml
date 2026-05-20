@@ -93,10 +93,11 @@ runs:
 
             # Add SYSVIPC so IPC_NS dependency (SYSVIPC || POSIX_MQUEUE)
             # is satisfied.  IPC_NS and PID_NS then default to y by Kconfig.
+            # Insert before the first CONFIG_IP_ line (alphabetical sort pos).
             if grep -q "^CONFIG_SYSVIPC=" "$DEFCONFIG"; then
               sed -i 's/^#\?CONFIG_SYSVIPC[ =].*/CONFIG_SYSVIPC=y/' "$DEFCONFIG"
-            else
-              sed -i "/CONFIG_IP_/i CONFIG_SYSVIPC=y" "$DEFCONFIG"
+            elif grep -q "^CONFIG_IP_" "$DEFCONFIG"; then
+              sed -i '0,/^CONFIG_IP_/s/^CONFIG_IP_/CONFIG_SYSVIPC=y\n&/' "$DEFCONFIG"
             fi
             echo "  ✓ CONFIG_SYSVIPC=y set in gki_defconfig"
           fi
