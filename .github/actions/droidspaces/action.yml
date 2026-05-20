@@ -91,6 +91,14 @@ runs:
             sed -i '/# CONFIG_PID_NS is not set/d' "$DEFCONFIG"
             echo "  ✓ removed stale # CONFIG_PID_NS is not set from gki_defconfig"
 
+            # BBG (Baseband Guard): its Kconfig has `default y`, so
+            # syncconfig/oldconfig during `make` sets CONFIG_BBG=y
+            # automatically.  But on 5.10 the CONFIG_LSM value set by BBG
+            # (which includes the required "baseband_guard" entry) gets
+            # dropped during syncconfig, triggering a build error in BBG's
+            # Makefile.  Explicitly n-set it to bypass BBG on 5.10 entirely.
+            echo "# CONFIG_BBG is not set" >> "$DEFCONFIG"
+
             # IPC_NS depends on SYSVIPC || POSIX_MQUEUE.  Stock gki_defconfig
             # has neither, so IPC_NS is forced n by Kconfig despite default y.
             # The static inline stubs for msg_init_ns (ipc/msg.c) and
