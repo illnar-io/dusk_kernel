@@ -83,7 +83,7 @@ runs:
         # because SYSVIPC has no Kconfig default (defaults n), so
         # savedefconfig keeps it — no diff with gki_defconfig.
         if [ "${{ inputs.kernel_version }}" = "5.10" ]; then
-          DEFCONFIG="common/arch/arm64/configs/gki_defconfig"
+          DEFCONFIG="${{ github.workspace }}/kernel/common/arch/arm64/configs/gki_defconfig"
           if [ -f "$DEFCONFIG" ]; then
             # Remove stale n-setting for PID_NS.  PID_NS defaults to y via
             # NAMESPACES=y on this kernel; the n-setting overrides that and
@@ -93,12 +93,21 @@ runs:
 
             # Add SYSVIPC so IPC_NS dependency (SYSVIPC || POSIX_MQUEUE)
             # is satisfied.  IPC_NS and PID_NS then default to y by Kconfig.
-            # Insert before the first CONFIG_IP_ line (alphabetical sort pos).
             if grep -q "^CONFIG_SYSVIPC=" "$DEFCONFIG"; then
               sed -i 's/^#\?CONFIG_SYSVIPC[ =].*/CONFIG_SYSVIPC=y/' "$DEFCONFIG"
-            elif grep -q "^CONFIG_IP_" "$DEFCONFIG"; then
-              sed -i '0,/^CONFIG_IP_/s/^CONFIG_IP_/CONFIG_SYSVIPC=y\n&/' "$DEFCONFIG"
+            else
+              echo "CONFIG_SYSVIPC=y" >> "$DEFCONFIG"
             fi
-            echo "  ✓ CONFIG_SYSVIPC=y set in gki_defconfig"
+            echo "  ✓ CONFIG_SYSVIPC=y added to gki_defconfig"
+
+            # Re-sort via savedefconfig so check_defconfig is satisfied.
+            cd "${{ github.workspace }}/kernel/common"
+            mkdir -p /tmp/droidspaces_sort
+            if make ARCH=arm64 O=/tmp/droidspaces_sort gki_defconfig savedefconfig &>/dev/null && [ -f /tmp/droidspaces_sort/defconfig ]; then
+              cp /tmp/droidspaces_sort/defconfig arch/arm64/configs/gki_defconfig
+              echo "  ✓ gki_defconfig re-sorted with savedefconfig"
+            fi
+            rm -rf /tmp/droidspaces_sort
+            cd "${{ github.workspace }}/kernel"
           fi
         fi
