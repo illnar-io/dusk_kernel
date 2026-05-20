@@ -71,26 +71,35 @@ runs:
         CONFIG_DEVTMPFS=y
         EOF
 
-        # IPC_NS: default is y in Kconfig (when NAMESPACES=y), but
-        # merge_config.sh -m does NOT override existing values on the
-        # legacy build system. On 5.10, msg.c defines msg_init_ns
-        # unconditionally (outside #ifdef CONFIG_IPC_NS), and the
-        # static inline stub in ipc_namespace.h (#else of IPC_NS)
-        # causes a redefinition if IPC_NS ends up as n.
-        # Set it explicitly for all versions.
+        # Ensure IPC_NS and PID_NS are in the fragment for 6.1+ (where the
+        # fragment is properly applied).  5.10 handles these directly in
+        # gki_defconfig above.
         echo 'CONFIG_IPC_NS=y' >> "$FRAGMENT"
         echo 'CONFIG_PID_NS=y' >> "$FRAGMENT"
 
         # Legacy build.sh (5.10) sources the fragment as a shell script, so
-        # fragment options like CONFIG_IPC_NS=y never reach .config.  The
-        # build-kernel action now uses merge_config.sh in POST_DEFCONFIG_CMDS
-        # to properly apply the fragment, and overrides check_defconfig to
-        # avoid spurious diffs with gki_defconfig.
-        # We only need to remove the explicit # CONFIG_PID_NS is not set so
-        # that merge_config.sh can set PID_NS=y from the fragment.
+        # fragment options never reach .config.  Force the needed symbols
+        # directly into gki_defconfig.  The build-kernel action overrides
+        # check_defconfig, so savedefconfig mismatches are tolerated.
         if [ "${{ inputs.kernel_version }}" = "5.10" ]; then
-          if [ -f "common/arch/arm64/configs/gki_defconfig" ] && grep -q '# CONFIG_PID_NS is not set' "common/arch/arm64/configs/gki_defconfig"; then
-            sed -i '/# CONFIG_PID_NS is not set/d' "common/arch/arm64/configs/gki_defconfig"
+          DEFCONFIG="common/arch/arm64/configs/gki_defconfig"
+          if [ -f "$DEFCONFIG" ]; then
+            # Remove stale n-setting for PID_NS (PID_NS defaults to y via
+            # NAMESPACES=y on this kernel, so the n-setting must be gone).
+            sed -i '/# CONFIG_PID_NS is not set/d' "$DEFCONFIG"
             echo "  ✓ removed stale # CONFIG_PID_NS is not set from gki_defconfig"
+
+            # IPC_NS depends on SYSVIPC || POSIX_MQUEUE (init/Kconfig).
+            # Stock gki_defconfig has neither, so IPC_NS is forced n by
+            # Kconfig despite its default y.  Add all three explicitly.
+            for cfg in CONFIG_SYSVIPC=y CONFIG_IPC_NS=y CONFIG_PID_NS=y; do
+              opt="${cfg%%=*}"
+              if grep -q "^$opt=" "$DEFCONFIG" || grep -q "^# $opt is not set" "$DEFCONFIG"; then
+                sed -i "s/^#\?$opt[ =].*/$cfg/" "$DEFCONFIG"
+              else
+                sed -i "/CONFIG_IP_/i $cfg" "$DEFCONFIG"
+              fi
+              echo "  ✓ $cfg set in gki_defconfig"
+            done
           fi
         fi

@@ -38,16 +38,12 @@ runs:
             MAKE_ARGS+=("$var=${!var}")
           fi
         done
-        # Legacy build.sh sources GKI_DEFCONFIG_FRAGMENT as a shell script
-        # (not passed to merge_config.sh), so fragment options like
-        # CONFIG_IPC_NS=y never reach .config.  Also, check_defconfig()
-        # compares gki_defconfig vs savedefconfig, which removes options
-        # matching Kconfig defaults — causing spurious failures when we
-        # patch gki_defconfig (e.g. IPC_NS=y matches default y when the
-        # dependency SYSVIPC||POSIX_MQUEUE is met).
-        # Fix: skip check_defconfig + apply the fragment via merge_config.sh.
+        # Legacy build.sh sources GKI_DEFCONFIG_FRAGMENT as a shell script,
+        # so fragment options never reach .config.  Also, check_defconfig()
+        # compares gki_defconfig vs savedefconfig which removes options that
+        # match Kconfig defaults.  We patch gki_defconfig directly via the
+        # droidspaces action and skip check_defconfig to avoid false diffs.
         sed -i '/eval check_defconfig/{s/.*/echo "check_defconfig skipped (dusk_kernel)"/}' build/build.sh
-        echo "POST_DEFCONFIG_CMDS='\$KERNEL_DIR/scripts/kconfig/merge_config.sh -O \$OUT_DIR \$KERNEL_DIR/arch/arm64/configs/gki_defconfig \$GKI_DEFCONFIG_FRAGMENT'" >> common/build.config.gki.aarch64
         build/build.sh -j"$(nproc)" "${MAKE_ARGS[@]}"
       else
         cp "${{ github.workspace }}/wild_gki.fragment" common/arch/arm64/configs/wild_gki.fragment
