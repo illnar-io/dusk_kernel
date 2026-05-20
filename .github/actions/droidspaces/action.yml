@@ -79,27 +79,25 @@ runs:
 
         # Legacy build.sh (5.10) sources the fragment as a shell script, so
         # fragment options never reach .config.  Force the needed symbols
-        # directly into gki_defconfig.  The build-kernel action overrides
-        # check_defconfig, so savedefconfig mismatches are tolerated.
+        # directly into gki_defconfig.  check_defconfig will be satisfied
+        # because SYSVIPC has no Kconfig default (defaults n), so
+        # savedefconfig keeps it — no diff with gki_defconfig.
         if [ "${{ inputs.kernel_version }}" = "5.10" ]; then
           DEFCONFIG="common/arch/arm64/configs/gki_defconfig"
           if [ -f "$DEFCONFIG" ]; then
-            # Remove stale n-setting for PID_NS (PID_NS defaults to y via
-            # NAMESPACES=y on this kernel, so the n-setting must be gone).
+            # Remove stale n-setting for PID_NS.  PID_NS defaults to y via
+            # NAMESPACES=y on this kernel; the n-setting overrides that and
+            # must be removed.
             sed -i '/# CONFIG_PID_NS is not set/d' "$DEFCONFIG"
             echo "  ✓ removed stale # CONFIG_PID_NS is not set from gki_defconfig"
 
-            # IPC_NS depends on SYSVIPC || POSIX_MQUEUE (init/Kconfig).
-            # Stock gki_defconfig has neither, so IPC_NS is forced n by
-            # Kconfig despite its default y.  Add all three explicitly.
-            for cfg in CONFIG_SYSVIPC=y CONFIG_IPC_NS=y CONFIG_PID_NS=y; do
-              opt="${cfg%%=*}"
-              if grep -q "^$opt=" "$DEFCONFIG" || grep -q "^# $opt is not set" "$DEFCONFIG"; then
-                sed -i "s/^#\?$opt[ =].*/$cfg/" "$DEFCONFIG"
-              else
-                sed -i "/CONFIG_IP_/i $cfg" "$DEFCONFIG"
-              fi
-              echo "  ✓ $cfg set in gki_defconfig"
-            done
+            # Add SYSVIPC so IPC_NS dependency (SYSVIPC || POSIX_MQUEUE)
+            # is satisfied.  IPC_NS and PID_NS then default to y by Kconfig.
+            if grep -q "^CONFIG_SYSVIPC=" "$DEFCONFIG"; then
+              sed -i 's/^#\?CONFIG_SYSVIPC[ =].*/CONFIG_SYSVIPC=y/' "$DEFCONFIG"
+            else
+              sed -i "/CONFIG_IP_/i CONFIG_SYSVIPC=y" "$DEFCONFIG"
+            fi
+            echo "  ✓ CONFIG_SYSVIPC=y set in gki_defconfig"
           fi
         fi

@@ -38,12 +38,6 @@ runs:
             MAKE_ARGS+=("$var=${!var}")
           fi
         done
-        # Legacy build.sh sources GKI_DEFCONFIG_FRAGMENT as a shell script,
-        # so fragment options never reach .config.  Also, check_defconfig()
-        # compares gki_defconfig vs savedefconfig which removes options that
-        # match Kconfig defaults.  We patch gki_defconfig directly via the
-        # droidspaces action and skip check_defconfig to avoid false diffs.
-        sed -i '/eval check_defconfig/{s/.*/echo "check_defconfig skipped (dusk_kernel)"/}' build/build.sh
         build/build.sh -j"$(nproc)" "${MAKE_ARGS[@]}"
       else
         cp "${{ github.workspace }}/wild_gki.fragment" common/arch/arm64/configs/wild_gki.fragment
