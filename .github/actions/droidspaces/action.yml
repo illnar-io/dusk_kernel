@@ -92,15 +92,19 @@ runs:
             sed -i '/# CONFIG_PID_NS is not set/d' "$DEFCONFIG"
             echo "  ✓ removed stale # CONFIG_PID_NS is not set from gki_defconfig"
 
-            # BBG (Baseband Guard): BBG adds CONFIG_BBG=y to the fragment.
-            # On 5.10, build.sh's POST_DEFCONFIG_CMDS runs
-            # merge_config.sh <fragment> which calls `make alldefconfig`,
-            # resetting all options to Kconfig defaults and then applying
-            # the fragment.  This drops CONFIG_LSM's "baseband_guard" entry
-            # (fragment doesn't include CONFIG_LSM) but keeps CONFIG_BBG=y
-            # (from fragment).  Override in the fragment so alldefconfig
-            # picks up the n-setting.
-            sed -i 's/^CONFIG_BBG=y/# CONFIG_BBG is not set/' "$FRAGMENT"
+            # BBG (Baseband Guard): on 5.10, BBG's CONFIG_LSM entry
+            # "baseband_guard" gets dropped during config regeneration
+            # (syncconfig triggered by the build).  The result is
+            # CONFIG_BBG=y but CONFIG_LSM without baseband_guard, which
+            # triggers a fatal $(error) in BBG's Makefile.  Patch the
+            # Makefile to demote the error and add the DEFINE_LSM flag
+            # that would otherwise be conditioned on baseband_guard.
+            BBG_MAKEFILE="${{ github.workspace }}/kernel/common/security/baseband-guard/Makefile"
+            if [ -f "$BBG_MAKEFILE" ]; then
+              sed -i 's/\$(error Please follow Baseband-guard/\$(info WARNING: Please follow Baseband-guard/' "$BBG_MAKEFILE"
+              echo 'ccflags-y += -DBBG_USE_DEFINE_LSM' >> "$BBG_MAKEFILE"
+              echo "  ✓ BBG Makefile error demoted, forced -DBBG_USE_DEFINE_LSM"
+            fi
 
             # IPC_NS depends on SYSVIPC || POSIX_MQUEUE.  Stock gki_defconfig
             # has neither, so IPC_NS is forced n by Kconfig despite default y.
