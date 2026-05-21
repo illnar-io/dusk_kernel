@@ -350,6 +350,44 @@ runs:
           echo "⚠ WARNING: SUSFS functions not found after 50_add patch attempt - SUSFS will be unavailable" >&2
         fi
 
+    - name: Fix SUSFS undefined symbols on android13-5.10
+      shell: bash
+      if: inputs.kernel_version == '5.10' && inputs.android_version == 'android13'
+      working-directory: ${{ github.workspace }}/kernel/common
+      run: |
+        set -euo pipefail
+        # ksu_handle_devpts is referenced by the 50_add patch in
+        # fs/devpts/inode.c but KernelSU-Next doesn't define it.
+        # Replace the extern declaration with a static inline stub.
+        if grep -q "extern int ksu_handle_devpts" fs/devpts/inode.c 2>/dev/null; then
+          sed -i 's/extern int ksu_handle_devpts(struct inode\*);/static inline int ksu_handle_devpts(struct inode *inode) { return 0; }/' fs/devpts/inode.c
+          echo "→ Replaced extern ksu_handle_devpts with inline stub"
+        fi
+
+        # susfs_extra_works is defined in fs/susfs.c but not exported.
+        # The WildKernels patch (applied earlier) references it from
+        # kernelsu/hook/setuid_hook.c.  If the definition is missing
+        # (e.g. SUSFS pinned commit is stale) or if symbol resolution
+        # fails, provide a fallback.
+        KSU_DIR="${KSU_DIR:-KernelSU-Next}"
+        if grep -q "extern struct work_struct susfs_extra_works" \
+          "../${KSU_DIR}/kernel/hook/setuid_hook.c" 2>/dev/null; then
+          if grep -q "struct work_struct susfs_extra_works" fs/susfs.c 2>/dev/null; then
+            if ! grep -q "EXPORT_SYMBOL(susfs_extra_works)" fs/susfs.c 2>/dev/null; then
+              sed -i '/^struct work_struct susfs_extra_works;$/a EXPORT_SYMBOL(susfs_extra_works);' fs/susfs.c
+              echo "→ Added EXPORT_SYMBOL(susfs_extra_works)"
+            fi
+          else
+            echo "→ WARNING: susfs_extra_works not found in fs/susfs.c, adding inline stub"
+            {
+              echo '#ifdef CONFIG_KSU_SUSFS'
+              echo 'struct work_struct susfs_extra_works;'
+              echo 'EXPORT_SYMBOL_GPL(susfs_extra_works);'
+              echo '#endif'
+            } >> fs/susfs.c
+          fi
+        fi
+
     - name: Revert Android 12 5.10 Fake Patches
       shell: bash
       if: inputs.kernel_version == '5.10' && inputs.android_version == 'android12'
