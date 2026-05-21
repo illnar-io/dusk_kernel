@@ -64,7 +64,9 @@ runs:
             echo "  already patched"
           else
             # Use printf with escape sequences to avoid actual tab chars in YAML
-            printf '%b' '#ifndef LOCK_STATE_NOT_HELD\n#define LOCK_STATE_NOT_HELD 0\n#endif\n\n#ifndef lockdep_is_held\n#define lockdep_is_held(lock) (1)\n#endif\n\n#ifndef lockdep_assert\n#define lockdep_assert(cond) \\\n\tdo { \\\n\t\tWARN_ON_ONCE(!(cond)); \\\n\t} while (0)\n#endif\n\n#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)\n#define schedule_hrtimeout_range_clock(expires, delta, mode, clock) \\\n\tschedule_hrtimeout_range(expires, delta, mode)\n#endif\n' > /tmp/ntsync_compat.h
+            printf '%b' '#ifndef LOCK_STATE_NOT_HELD\n#define LOCK_STATE_NOT_HELD 0\n#endif\n\n#ifndef lockdep_is_held\n#define lockdep_is_held(lock) (1)\n#endif\n\n#ifndef lockdep_assert\n#define lockdep_assert(cond) \\\n\tdo { \\\n\t\tWARN_ON_ONCE(!(cond)); \\\n\t} while (0)\n#endif\n\n#ifndef schedule_hrtimeout_range_clock\n#define schedule_hrtimeout_range_clock(expires, delta, mode, clock) \\\n\tschedule_hrtimeout_range(expires, delta, mode)\n#endif\n' > /tmp/ntsync_compat.h
+            # ntsync.c doesn't include linux/version.h; add it before the uapi include
+            sed -i '/^#include <uapi\/linux\/ntsync.h>$/i #include <linux/version.h>' "$TARGET"
             sed -i '/^#include <linux\/version.h>$/r /tmp/ntsync_compat.h' "$TARGET"
             echo "✅ Injected 5.10 compat defines into ntsync.c"
           fi
