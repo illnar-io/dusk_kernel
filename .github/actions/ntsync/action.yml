@@ -28,13 +28,6 @@ runs:
       run: |
         set -euo pipefail
 
-        # ntsync uses lockdep_assert / LOCK_STATE_NOT_HELD which don't
-        # exist on 5.10.  Skip entirely on this kernel version.
-        if [ "${{ inputs.kernel_version }}" = "5.10" ]; then
-          echo "⚠ ntsync requires lockdep_assert (6.4+), skipping on 5.10"
-          exit 0
-        fi
-
         PATCH="${{ github.workspace }}/kernel_patches/ntsync/ntsync_base.patch"
         echo "Applying ntsync patches from: ${PATCH}"
 

@@ -1,0 +1,25 @@
+diff --git a/drivers/misc/ntsync.c b/drivers/misc/ntsync.c
+--- a/drivers/misc/ntsync.c
++++ b/drivers/misc/ntsync.c
+@@ -22,6 +22,21 @@
+ #include <uapi/linux/ntsync.h>
+ #include <linux/version.h>
+ 
++#ifndef LOCK_STATE_NOT_HELD
++#define LOCK_STATE_NOT_HELD 0
++#endif
++
++#ifndef lockdep_is_held
++#define lockdep_is_held(lock) (1)
++#endif
++
++#ifndef lockdep_assert
++#define lockdep_assert(cond) \
++	do { \
++		WARN_ON_ONCE(!(cond)); \
++	} while (0)
++#endif
++
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
+ #include <linux/mnt_idmapping.h>
+ #endif
