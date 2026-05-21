@@ -60,7 +60,7 @@ runs:
           # and schedule_hrtimeout_range_clock (added in 5.11) are not available
           # on 5.10. Inject compat fallbacks after #include <linux/version.h>.
           TARGET="drivers/misc/ntsync.c"
-          if grep -q "LOCK_STATE_NOT_HELD" "$TARGET" 2>/dev/null; then
+          if grep -q "^#define LOCK_STATE_NOT_HELD" "$TARGET" 2>/dev/null; then
             echo "  already patched"
           else
             # Use printf with escape sequences to avoid actual tab chars in YAML
