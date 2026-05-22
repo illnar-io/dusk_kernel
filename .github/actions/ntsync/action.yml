@@ -99,14 +99,18 @@ runs:
           exit 0
         fi
 
-        # Check if NTSYNC Kconfig already exists in the standard location
-        # (drivers/misc/Kconfig).  On a16-6.12 the kernel may have ntsync
-        # pre-installed but the Kconfig can be in a non-sourced file or gated
-        # behind unmet dependencies; the broad tree-wide grep can false-positive
-        # and skip adding our reachable entry, causing the build to fail with
-        # "CONFIG_NTSYNC: actual '', expected 'y'".
+        # Check if NTSYNC Kconfig already exists in the standard location.
+        # On a16-6.12 the in-tree entry has `depends on BROKEN` which makes
+        # it invisible to the config system; strip that dependency line so
+        # we can actually select CONFIG_NTSYNC=y.
         if grep -q "config NTSYNC\b" "drivers/misc/Kconfig" 2>/dev/null; then
-          echo "NTSYNC Kconfig already in drivers/misc/Kconfig, skipping"
+          echo "NTSYNC Kconfig already in drivers/misc/Kconfig"
+          if grep -q "depends on BROKEN" "drivers/misc/Kconfig"; then
+            sed -i '/config NTSYNC/,/^[[:space:]]*$/ {/depends on BROKEN/d}' "drivers/misc/Kconfig"
+            echo "Removed depends on BROKEN from NTSYNC Kconfig entry"
+          else
+            echo "NTSYNC Kconfig has no BROKEN dependency, good"
+          fi
         else
           printf '\nconfig NTSYNC\n\ttristate "NT synchronization primitive emulation"\n\tdefault m\n\thelp\n\t  This module provides kernel support for emulation of Windows NT\n\t  synchronization primitives. It is not a hardware driver.\n\n\t  To compile this driver as a module, choose M here: the\n\t  module will be called ntsync.\n\n\t  If unsure, say N.\n' >> drivers/misc/Kconfig
           echo "Added NTSYNC config to Kconfig"
