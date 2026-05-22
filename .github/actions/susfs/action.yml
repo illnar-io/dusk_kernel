@@ -350,9 +350,8 @@ runs:
           echo "⚠ WARNING: SUSFS functions not found after 50_add patch attempt - SUSFS will be unavailable" >&2
         fi
 
-    - name: Fix SUSFS undefined symbols on android13-5.10
+    - name: Fix SUSFS undefined symbols
       shell: bash
-      if: inputs.kernel_version == '5.10' && inputs.android_version == 'android13'
       working-directory: ${{ github.workspace }}/kernel/common
       run: |
         set -euo pipefail
