@@ -54,7 +54,6 @@ runs:
 
         # ZRAM: module + zstd default (multi-compression built-in on 6.1.157+)
         CONFIG_ZRAM=m
-        CONFIG_ZSMALLOC=y
 
         # RCU_LAZY: activate by default (was DEFAULT_OFF)
         # CONFIG_RCU_LAZY_DEFAULT_OFF is not set
@@ -82,6 +81,16 @@ runs:
             echo 'CONFIG_USER_NS=y' >> "$FRAGMENT"
         else
             echo "  ⚠ skipping CONFIG_USER_NS (not compatible on kernel 5.10)" >&2
+        fi
+
+        # ZSMALLOC: explicitly set module mode on 5.10 so zram can find
+        # the zs_* symbols.  On 6.x the defconfig already sets ZSMALLOC=m
+        # and forcing it to y conflicts with Kleaf's strict config checker.
+        if [ "${{ inputs.kernel_version }}" == "5.10" ]; then
+            if config_exists "ZSMALLOC"; then
+                echo 'CONFIG_ZSMALLOC=m' >> "$FRAGMENT"
+                echo "  → ZSMALLOC=m (zsmalloc module for zram)"
+            fi
         fi
 
         # ZRAM default compression algorithm - guard by Kconfig existence
