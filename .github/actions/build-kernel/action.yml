@@ -38,6 +38,20 @@ runs:
             MAKE_ARGS+=("$var=${!var}")
           fi
         done
+        # On legacy builds (5.10, 5.15) the build system checks
+        # common/android/gki_aarch64_modules against the actual module list
+        # after compilation.  If our fragment adds extra modules (zram, ntsync,
+        # zsmalloc) this check fails.  Update the file upfront so it reflects
+        # what we will build.
+        if [ -f "common/android/gki_aarch64_modules" ]; then
+          for mod in mm/zsmalloc.ko drivers/block/zram/zram.ko drivers/misc/ntsync.ko; do
+            if ! grep -qxF "$mod" "common/android/gki_aarch64_modules" 2>/dev/null; then
+              echo "$mod" >> "common/android/gki_aarch64_modules"
+            fi
+          done
+          echo "✓ Updated common/android/gki_aarch64_modules"
+        fi
+
         build/build.sh -j"$(nproc)" "${MAKE_ARGS[@]}"
       else
         cp "${{ github.workspace }}/wild_gki.fragment" common/arch/arm64/configs/wild_gki.fragment
