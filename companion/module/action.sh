@@ -3,17 +3,17 @@
 echo ""
 echo ".     *       .       ."
 echo "*       .        .   🌕    ."
-echo "    .        .        ."
-echo "         |               |"
-echo "      _\` |  |   |   __|  |  /"
-echo "     (   |  |   | \\__ \\    <"
-echo "    \\__,_| \\__,_| ____/ _|\\_\\"
-echo "     .     *       .       ."
+echo "    .        .        ."
+echo "         |               |"
+echo "      _\` |  |   |   __|  |  /"
+echo "     (   |  |   | \\__ \\    <"
+echo "    \\__,_| \\__,_| ____/ _|\\_\\"
+echo "     .     *       .       ."
 echo "*       .        .      ."
-echo "    .        .        ."
+echo "    .        .        ."
 echo ""
 echo "=============================="
-echo "  DUSK Kernel Companion v2.1"
+echo "  DUSK Kernel Companion v2.1"
 echo "=============================="
 echo ""
 
@@ -24,9 +24,9 @@ CONFIG="$MODDIR/config.conf"
 check() {
   local label="$1" result="$2"
   if [ "$result" = "yes" ]; then
-    echo "  [✓] $label"
+    echo "  [✓] $label"
   else
-    echo "  [✗] $label"
+    echo "  [✗] $label"
   fi
 }
 
@@ -36,7 +36,7 @@ check_ntsync() { [ -c /dev/ntsync ] && echo yes || (lsmod 2>/dev/null | grep -q 
 
 # Kernel
 echo "--- Kernel ---"
-echo "  $(uname -r)"
+echo "  $(uname -r)"
 echo ""
 
 # KernelSU
@@ -51,7 +51,7 @@ check "NTSYNC" "$(check_ntsync)"
 # Mode
 echo ""
 echo "--- Profile ---"
-echo "  Mode: ${MODE:-balanced}"
+echo "  Mode: ${MODE:-balanced}"
 
 # CPU
 echo ""
@@ -75,7 +75,7 @@ for d in /sys/class/devfreq/*; do
     g=$(cat "$d/governor" 2>/dev/null)
     f=$(cat "$d/cur_freq" 2>/dev/null)
     [ "$g" = "${GPU_GOVERNOR:-performance}" ] && gpu_ok="yes"
-    echo "  $name: gov=$g freq=${f}Hz"
+    echo "  $name: gov=$g freq=${f}Hz"
     ;;
   esac
 done
@@ -91,7 +91,7 @@ for block in /sys/block/[a-z]*; do
   case "$dev" in loop*|ram*) continue;; esac
   s=$(cat "$block/queue/scheduler" 2>/dev/null)
   ra=$(cat "$block/queue/read_ahead_kb" 2>/dev/null)
-  echo "  $dev: $s | read_ahead=${ra}KB"
+  echo "  $dev: $s | read_ahead=${ra}KB"
   echo "$s" | grep -q "\[${IO_SCHEDULER:-mq-deadline}\]" && io_ok="yes"
 done
 check "I/O ${IO_SCHEDULER:-mq-deadline}" "$io_ok"
@@ -101,7 +101,7 @@ echo ""
 echo "--- Network ---"
 cc=$(cat /proc/sys/net/ipv4/tcp_congestion_control 2>/dev/null)
 check "TCP congestion (${TCP_CONG:-bbr})" "$([ "$cc" = "${TCP_CONG:-bbr}" ] && echo yes || echo no)"
-echo "  Current: $cc"
+echo "  Current: $cc"
 ecn=$(cat /proc/sys/net/ipv4/tcp_ecn 2>/dev/null)
 check "TCP ECN" "$([ "$ecn" = "1" ] && echo yes || echo no)"
 
@@ -119,7 +119,7 @@ echo ""
 echo "--- F2FS ---"
 for f2fs in /sys/fs/f2fs/*; do
   [ -d "$f2fs" ] || continue
-  echo "  $(basename $f2fs):"
+  echo "  $(basename $f2fs):"
   for param in gc_urgent_sleep_time gc_max_sleep_time min_fsync_blocks; do
     val=$(cat "$f2fs/$param" 2>/dev/null) && echo "    $param=$val"
   done
