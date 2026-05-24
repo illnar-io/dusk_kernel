@@ -52,7 +52,11 @@ runs:
           echo "✓ Updated common/android/gki_aarch64_modules"
         fi
 
-        build/build.sh -j"$(nproc)" "${MAKE_ARGS[@]}"
+        # Use fewer parallel jobs than $(nproc) to avoid OOM during LTO.
+        # GitHub runners have 4 vCPUs but LTO thin with -j4 can exhaust
+        # memory on older kernel versions (5.15.41, 5.15.74) that lack
+        # memory-efficient LTO improvements.  -j2 keeps memory safe.
+        build/build.sh -j2 "${MAKE_ARGS[@]}"
       else
         cp "${{ github.workspace }}/wild_gki.fragment" common/arch/arm64/configs/wild_gki.fragment
         tools/bazel build \
