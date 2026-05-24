@@ -132,3 +132,14 @@ runs:
             cd "${{ github.workspace }}/kernel"
           fi
         fi
+
+        # BBG Makefile fix for 5.15: same issue as 5.10 — syncconfig drops
+        # baseband_guard from CONFIG_LSM, triggering a fatal $(error).
+        if [ "${{ inputs.kernel_version }}" = "5.15" ]; then
+          BBG_MAKEFILE="${{ github.workspace }}/kernel/common/security/baseband-guard/Makefile"
+          if [ -f "$BBG_MAKEFILE" ]; then
+            sed -i 's/\$(error Please follow Baseband-guard/\$(info WARNING: Please follow Baseband-guard/' "$BBG_MAKEFILE"
+            echo 'ccflags-y += -DBBG_USE_DEFINE_LSM' >> "$BBG_MAKEFILE"
+            echo "  ✓ BBG Makefile error demoted, forced -DBBG_USE_DEFINE_LSM"
+          fi
+        fi
