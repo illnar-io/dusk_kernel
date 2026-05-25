@@ -1,7 +1,7 @@
 diff --git a/drivers/misc/ntsync.c b/drivers/misc/ntsync.c
 --- a/drivers/misc/ntsync.c
 +++ b/drivers/misc/ntsync.c
-@@ -22,6 +22,21 @@
+@@ -22,6 +22,30 @@
  #include <uapi/linux/ntsync.h>
  #include <linux/version.h>
  
@@ -18,6 +18,11 @@ diff --git a/drivers/misc/ntsync.c b/drivers/misc/ntsync.c
 +	do { \
 +		WARN_ON_ONCE(!(cond)); \
 +	} while (0)
++#endif
++
++#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
++#define schedule_hrtimeout_range_clock(expires, delta, mode, clock) \
++	schedule_hrtimeout_range(expires, delta, mode)
 +#endif
 +
  #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)

@@ -33,7 +33,7 @@ runs:
           "mem_opt_prefetch.patch"
           "optimise_memcmp.patch"
           "optimized_mem_operations.patch"
-          "reduce_cache_pressure.patch"
+          # "reduce_cache_pressure.patch"  # REMOVED: sets vfs_cache_pressure=50 causing ZRAM thrashing on 8GB devices
           "use_unlikely_wrap_cpufreq.patch"
           "force_tcp_nodelay.patch"
           "IPv6_NAT_FIX.patch"
