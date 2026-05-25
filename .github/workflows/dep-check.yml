@@ -64,7 +64,7 @@ jobs:
       - name: Check SUSFS (android14-6.1)
         id: susfs_a14_6_1
         run: |
-          PINNED="9bf72ec2c83d40f194b936cabbc64ce342e005bf"
+          PINNED="ef16cbce5c5195988b9b630de85466148cbbcdef"
           LATEST=$(git ls-remote https://gitlab.com/simonpunk/susfs4ksu.git refs/heads/gki-android14-6.1 | awk '{print $1}')
           echo "pinned=$PINNED" >> $GITHUB_OUTPUT; echo "latest=$LATEST" >> $GITHUB_OUTPUT
           [ "$PINNED" != "$LATEST" ] && [ -n "$LATEST" ] && echo "updated=true" >> $GITHUB_OUTPUT || echo "updated=false" >> $GITHUB_OUTPUT
