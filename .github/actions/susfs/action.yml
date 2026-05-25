@@ -39,7 +39,7 @@ runs:
           SUSFS_COMMIT="667368cf274311a62971671035738b154be1c062"
         fi
         if [ "${{ inputs.kernel_version }}" = "6.1" ]; then
-          SUSFS_COMMIT="ef16cbce5c5195988b9b630de85466148cbbcdef"
+          SUSFS_COMMIT="9bf72ec2c83d40f194b936cabbc64ce342e005bf"
         fi
         if [ "${{ inputs.kernel_version }}" = "6.6" ]; then
           SUSFS_COMMIT="5009b9edee98fbe66b1a3cb22c603690d81b7817"

@@ -181,6 +181,48 @@ jobs:
     - name: Clean Kernel Flags
       uses: ./.github/actions/clean-kernel-flags
 
+    - name: Commit all kernel source modifications
+      shell: bash
+      run: |
+        set -euo pipefail
+        cd ${{ github.workspace }}/kernel
+        git add -A
+        git diff --cached --quiet && echo "Nothing to commit — tree is clean" || \
+          git commit -m "feat: apply kernel modifications (KSU, SUSFS, patches)"
+        echo "All kernel source changes committed to git index"
+
+    - name: Verify KSU inline hooks
+      shell: bash
+      run: |
+        set -euo pipefail
+        cd ${{ github.workspace }}/kernel/common
+        MISSING=0
+        check_hook() {
+          local file="$1"
+          local pattern="$2"
+          if grep -q "$pattern" "$file" 2>/dev/null; then
+            echo "OK: $pattern found in $file"
+          else
+            echo "FATAL: Missing hook '$pattern' in $file"
+            MISSING=$((MISSING + 1))
+          fi
+        }
+        check_hook "fs/exec.c"             "ksu_handle_execveat("
+        check_hook "fs/open.c"             "ksu_handle_faccessat("
+        check_hook "fs/read_write.c"       "ksu_handle_sys_read("
+        check_hook "fs/stat.c"             "ksu_handle_stat("
+        check_hook "drivers/input/input.c" "ksu_handle_input_handle_event("
+        check_hook "kernel/reboot.c"       "ksu_handle_sys_reboot("
+        if [ "$MISSING" -gt 0 ]; then
+          echo ""
+          echo "ERROR: $MISSING KSU inline hook(s) missing from kernel source."
+          echo "Kernel will silently fall back to Tracepoint mode."
+          echo "This causes app crashes, broken root hiding, and ART instability."
+          echo "Fix: ensure SUSFS 50_add patch applied correctly."
+          exit 1
+        fi
+        echo "All KSU inline hooks verified."
+
     - name: Scan and collect patch rejects
       id: scan
       if: ${{ always() && inputs.variant == 'Normal' }}

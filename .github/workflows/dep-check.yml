@@ -16,18 +16,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Check KernelSU-Next
+      - name: Check KernelSU-Next (dev branch)
         id: ksu
         run: |
-          PINNED="v3.2.0"
-          LATEST_TAG=$(curl -sL "https://api.github.com/repos/rifsxd/KernelSU-Next/releases/latest" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('tag_name',''))")
+          PINNED="5a4a71874caaad06aa126f761c93391de1d32361"
+          LATEST=$(git ls-remote https://github.com/rifsxd/KernelSU-Next.git refs/heads/dev | awk '{print $1}')
           echo "pinned=$PINNED" >> $GITHUB_OUTPUT
-          echo "latest=$LATEST_TAG" >> $GITHUB_OUTPUT
-          if [ "$PINNED" != "$LATEST_TAG" ] && [ -n "$LATEST_TAG" ]; then
-            echo "updated=true" >> $GITHUB_OUTPUT
-          else
-            echo "updated=false" >> $GITHUB_OUTPUT
-          fi
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          [ "$PINNED" != "$LATEST" ] && [ -n "$LATEST" ] && echo "updated=true" >> $GITHUB_OUTPUT || echo "updated=false" >> $GITHUB_OUTPUT
 
       - name: Check SUSFS (android12-5.10)
         id: susfs_a12_5_10
@@ -64,7 +60,7 @@ jobs:
       - name: Check SUSFS (android14-6.1)
         id: susfs_a14_6_1
         run: |
-          PINNED="ef16cbce5c5195988b9b630de85466148cbbcdef"
+          PINNED="9bf72ec2c83d40f194b936cabbc64ce342e005bf"
           LATEST=$(git ls-remote https://gitlab.com/simonpunk/susfs4ksu.git refs/heads/gki-android14-6.1 | awk '{print $1}')
           echo "pinned=$PINNED" >> $GITHUB_OUTPUT; echo "latest=$LATEST" >> $GITHUB_OUTPUT
           [ "$PINNED" != "$LATEST" ] && [ -n "$LATEST" ] && echo "updated=true" >> $GITHUB_OUTPUT || echo "updated=false" >> $GITHUB_OUTPUT

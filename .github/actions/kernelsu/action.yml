@@ -19,10 +19,9 @@ runs:
 
         if [[ "$ROOT" == "KernelSU-Next" ]] || [[ "$ROOT" == "KSUN" ]]; then
           echo "  Cloning KernelSU-Next..."
-          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/stable/kernel/setup.sh" | bash -s v3.2.0
-          # Pin to known-good commit — v3.2.0 tag is force-pushed and newer
-          # revisions break SUSFS compatibility.
-          cd KernelSU-Next && git checkout 4c9737ae && cd kernel
+          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/dev/kernel/setup.sh" | bash -s "5a4a71874caaad06aa126f761c93391de1d32361"
+          # Pin to known-good dev commit — matches WildKernels' ksun patch.
+          cd KernelSU-Next && git checkout 5a4a71874caaad06aa126f761c93391de1d32361 && cd kernel
           COMMITS_COUNT=$(/usr/bin/git rev-list --count HEAD)
           BASE_VERSION=30000
           KSU_VERSION=$(expr $COMMITS_COUNT "+" $BASE_VERSION)
