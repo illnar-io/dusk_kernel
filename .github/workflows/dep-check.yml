@@ -19,11 +19,11 @@ jobs:
       - name: Check KernelSU-Next
         id: ksu
         run: |
-          PINNED="4c9737aed458843e920de95b0bcad56cf790663b"
-          LATEST=$(git ls-remote https://github.com/KernelSU-Next/KernelSU-Next.git refs/heads/dev | awk '{print $1}')
+          PINNED="v3.2.0"
+          LATEST_TAG=$(curl -sL "https://api.github.com/repos/rifsxd/KernelSU-Next/releases/latest" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('tag_name',''))")
           echo "pinned=$PINNED" >> $GITHUB_OUTPUT
-          echo "latest=$LATEST" >> $GITHUB_OUTPUT
-          if [ "$PINNED" != "$LATEST" ] && [ -n "$LATEST" ]; then
+          echo "latest=$LATEST_TAG" >> $GITHUB_OUTPUT
+          if [ "$PINNED" != "$LATEST_TAG" ] && [ -n "$LATEST_TAG" ]; then
             echo "updated=true" >> $GITHUB_OUTPUT
           else
             echo "updated=false" >> $GITHUB_OUTPUT
@@ -64,7 +64,7 @@ jobs:
       - name: Check SUSFS (android14-6.1)
         id: susfs_a14_6_1
         run: |
-          PINNED="ef16cbce5c5195988b9b630de85466148cbbcdef"
+          PINNED="9bf72ec2c83d40f194b936cabbc64ce342e005bf"
           LATEST=$(git ls-remote https://gitlab.com/simonpunk/susfs4ksu.git refs/heads/gki-android14-6.1 | awk '{print $1}')
           echo "pinned=$PINNED" >> $GITHUB_OUTPUT; echo "latest=$LATEST" >> $GITHUB_OUTPUT
           [ "$PINNED" != "$LATEST" ] && [ -n "$LATEST" ] && echo "updated=true" >> $GITHUB_OUTPUT || echo "updated=false" >> $GITHUB_OUTPUT

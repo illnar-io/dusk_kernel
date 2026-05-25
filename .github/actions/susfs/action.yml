@@ -39,7 +39,7 @@ runs:
           SUSFS_COMMIT="667368cf274311a62971671035738b154be1c062"
         fi
         if [ "${{ inputs.kernel_version }}" = "6.1" ]; then
-          SUSFS_COMMIT="ef16cbce5c5195988b9b630de85466148cbbcdef"
+          SUSFS_COMMIT="9bf72ec2c83d40f194b936cabbc64ce342e005bf"
         fi
         if [ "${{ inputs.kernel_version }}" = "6.6" ]; then
           SUSFS_COMMIT="5009b9edee98fbe66b1a3cb22c603690d81b7817"
@@ -72,6 +72,7 @@ runs:
         # individual archived patches (tried at both locations for safety).
         PATCH_NAMES=(
           "ksun-5a4a718-susfs-f7ae19ef-gki-android14-6.1.patch"
+          "ksun-8c1b4a9-susfs-v2.1.0-a14-6.1-45013457.patch"
           "ksun-4c9737a-susfs-v2.1.0-a14-6.1-ef16cbce.patch"
           "ksun-293ca01-susfs-v2.1.0-a14-6.1-ef16cbce.patch"
           "ksun-e6ba52b-susfs-v2.1.0-a14-6.1-e1c57040.patch"
