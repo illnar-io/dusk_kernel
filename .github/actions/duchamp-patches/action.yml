@@ -11,54 +11,13 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Download and Apply Duchamp Common Patches
+    - name: Skip Duchamp Patches
       shell: bash
-      working-directory: ${{ github.workspace }}/kernel/common
       run: |
-        set -euo pipefail
-        BASE_URL="https://raw.githubusercontent.com/ahmed-alnassif/GKI-Duchamp/master/kernel-patches/common"
-        PATCHES=(
-          "add_timeout_wakelocks_globally.patch"
-          "reduce_freeze_timeout.patch"
-          "minimise_wakeup_time.patch"
-          "avoid_extra_s2idle_wake_attempts.patch"
-          "reduce_pci_pme_wakeups.patch"
-          "adjust_cpu_scan_order.patch"
-          "clear_page_16bytes_align.patch"
-          "disable_cache_hot_buddy.patch"
-          "file_struct_8bytes_align.patch"
-          "increase_ext4_default_commit_age.patch"
-          "increase_sk_mem_packets.patch"
-          "int_sqrt.patch"
-          "mem_opt_prefetch.patch"
-          "optimise_memcmp.patch"
-          "optimized_mem_operations.patch"
-          # "reduce_cache_pressure.patch"  # REMOVED: sets vfs_cache_pressure=50 causing ZRAM thrashing on 8GB devices
-          "use_unlikely_wrap_cpufreq.patch"
-          "force_tcp_nodelay.patch"
-          "IPv6_NAT_FIX.patch"
-          "reduce_gc_thread_sleep_time.patch"
-          "f2fs_enlarge_min_fsync_blocks.patch"
-          "f2fs_reduce_congestion.patch"
-          "silence_irq_cpu_logspam.patch"
-          "silence_system_logspam.patch"
-        )
-        TMPDIR=$(mktemp -d)
-        for PATCH in "${PATCHES[@]}"; do
-          echo "→ Downloading ${PATCH}..."
-          if ! curl -sLf "${BASE_URL}/${PATCH}" -o "${TMPDIR}/${PATCH}"; then
-            echo "⚠ Failed to download ${PATCH}, skipping"
-            continue
-          fi
-          echo "  Applying..."
-          if ! patch -p1 --dry-run < "${TMPDIR}/${PATCH}" 2>/dev/null; then
-            echo "  ⚠ ${PATCH} already applied upstream, skipping"
-          else
-            patch -p1 < "${TMPDIR}/${PATCH}"
-            echo "  ✅ Applied"
-          fi
-        done
-        rm -rf "$TMPDIR"
+        echo "⚠ All Duchamp performance/battery/networking patches skipped."
+        echo "  These patches (reduce_cache_pressure, mem_opt_prefetch, force_tcp_nodelay,"
+        echo "  f2fs GC tuning, IPv6_NAT_FIX, etc.) caused ZRAM thrashing, app crashes,"
+        echo "  and image loading failures on Pixel 6. Removed per user request."
 
     - name: Download and Apply Scaling Min Freq Patches
       shell: bash
@@ -69,46 +28,12 @@ runs:
         # cpu_lp_mask/cpu_perf_mask not present in GKI common kernels.
         echo "⚠ Skipping scaling_min_freq patches (GKI doesn't have cpu_lp_mask/cpu_perf_mask)"
 
-    - name: Download and Apply BBRv3
+    - name: Skip BBRv3
       shell: bash
-      working-directory: ${{ github.workspace }}/kernel/common
       run: |
-        set -euo pipefail
-        BBR_URL="https://raw.githubusercontent.com/ahmed-alnassif/GKI-Duchamp/master/kernel-patches/bbrv3/bbrv3.patch"
-        PATCH="bbrv3.patch"
-        TMPDIR=$(mktemp -d)
-        echo "→ Downloading BBRv3 (large patch)..."
-        if curl -sLf "${BBR_URL}" -o "${TMPDIR}/${PATCH}"; then
-          echo "  Applying BBRv3..."
-          if ! patch -p1 --dry-run < "${TMPDIR}/${PATCH}" 2>/dev/null; then
-            echo "  ⚠ BBRv3 already applied upstream, skipping"
-          else
-            patch -p1 < "${TMPDIR}/${PATCH}"
-            echo "  ✅ BBRv3 applied"
-          fi
-        else
-          echo "  ⚠ Failed to download BBRv3, skipping"
-        fi
-        rm -rf "$TMPDIR"
+        echo "⚠ BBRv3 patch skipped (Duchamp source)"
 
-    - name: Apply KernelSU Multi-Manager Patch
+    - name: Skip KernelSU Multi-Manager Patch
       shell: bash
-      working-directory: ${{ github.workspace }}/kernel/common
       run: |
-        set -euo pipefail
-        PATCH_URL="https://raw.githubusercontent.com/ahmed-alnassif/GKI-Duchamp/master/patches/0001-feat-add-multiple-managers.patch"
-        PATCH="0001-feat-add-multiple-managers.patch"
-        TMPDIR=$(mktemp -d)
-        echo "→ Downloading KernelSU Multi-Manager patch..."
-        if curl -sLf "${PATCH_URL}" -o "${TMPDIR}/${PATCH}"; then
-          echo "  Applying..."
-          if ! patch -p1 --dry-run < "${TMPDIR}/${PATCH}" 2>/dev/null; then
-            echo "  ⚠ Multi-Manager already applied or conflicts, skipping"
-          else
-            patch -p1 < "${TMPDIR}/${PATCH}"
-            echo "  ✅ Multi-Manager applied"
-          fi
-        else
-          echo "  ⚠ Failed to download Multi-Manager patch, skipping"
-        fi
-        rm -rf "$TMPDIR"
+        echo "⚠ KernelSU Multi-Manager patch skipped (Duchamp source)"

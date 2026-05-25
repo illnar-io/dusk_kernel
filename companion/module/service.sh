@@ -181,7 +181,7 @@ esac
 
 # ============ VM ============
 write_val /proc/sys/vm/swappiness 100 "swappiness"
-write_val /proc/sys/vm/vfs_cache_pressure 50 "vfs_cache_pressure"
+write_val /proc/sys/vm/vfs_cache_pressure 100 "vfs_cache_pressure"
 write_val /proc/sys/vm/dirty_ratio 20 "dirty_ratio"
 write_val /proc/sys/vm/dirty_background_ratio 5 "dirty_background_ratio"
 write_val /proc/sys/vm/page-cluster 0 "page-cluster"
