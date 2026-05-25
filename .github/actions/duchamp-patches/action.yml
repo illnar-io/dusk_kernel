@@ -11,21 +11,48 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Skip Duchamp Patches
+    - name: Apply Selective Patches (force_tcp_nodelay + F2FS GC)
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel/common
+      run: |
+        set -euo pipefail
+        BASE_URL="https://raw.githubusercontent.com/ahmed-alnassif/GKI-Duchamp/master/kernel-patches/common"
+        PATCHES=(
+          "force_tcp_nodelay.patch"
+          "reduce_gc_thread_sleep_time.patch"
+          "f2fs_enlarge_min_fsync_blocks.patch"
+          "f2fs_reduce_congestion.patch"
+        )
+        TMPDIR=$(mktemp -d)
+        for PATCH in "${PATCHES[@]}"; do
+          echo "→ Downloading ${PATCH}..."
+          if ! curl -sLf "${BASE_URL}/${PATCH}" -o "${TMPDIR}/${PATCH}"; then
+            echo "⚠ Failed to download ${PATCH}, skipping"
+            continue
+          fi
+          echo "  Applying..."
+          if ! patch -p1 --dry-run < "${TMPDIR}/${PATCH}" 2>/dev/null; then
+            echo "  ⚠ ${PATCH} already applied upstream, skipping"
+          else
+            patch -p1 < "${TMPDIR}/${PATCH}"
+            echo "  ✅ Applied"
+          fi
+        done
+        rm -rf "$TMPDIR"
+
+    - name: Skip Remaining Duchamp Patches
       shell: bash
       run: |
-        echo "⚠ All Duchamp performance/battery/networking patches skipped."
-        echo "  These patches (reduce_cache_pressure, mem_opt_prefetch, force_tcp_nodelay,"
-        echo "  f2fs GC tuning, IPv6_NAT_FIX, etc.) caused ZRAM thrashing, app crashes,"
-        echo "  and image loading failures on Pixel 6. Removed per user request."
+        echo "⚠ Other Duchamp patches skipped (reduce_cache_pressure, mem_opt_prefetch,"
+        echo "  IPv6_NAT_FIX, battery/power, scheduler, logspam, etc.) — caused ZRAM"
+        echo "  thrashing and instability on Pixel 6. Only force_tcp_nodelay and F2FS"
+        echo "  GC tuning retained."
 
     - name: Download and Apply Scaling Min Freq Patches
       shell: bash
       working-directory: ${{ github.workspace }}/kernel/common
       run: |
         set -euo pipefail
-        # Scaling min freq patches reference Samsung/OnePlus-specific
-        # cpu_lp_mask/cpu_perf_mask not present in GKI common kernels.
         echo "⚠ Skipping scaling_min_freq patches (GKI doesn't have cpu_lp_mask/cpu_perf_mask)"
 
     - name: Skip BBRv3
