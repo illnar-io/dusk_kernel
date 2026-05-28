@@ -259,6 +259,10 @@ runs:
           perl -i -pe 's/\bmask,\s*mark->ignored_mask/inotify_mark_user_mask(mark)/g' fs/notify/fdinfo.c
           perl -i -pe 's/ignored_mask:%x/ignored_mask:0/g' fs/notify/fdinfo.c
         fi
+        if [ "${{ inputs.sublevel }}" -ge "207" ]; then
+          echo "Applying task_mmu.c Android 14 6.1 Fake Patch"
+          sed -i '/^#include <trace\/hooks\/blk.h>$/d' fs/proc/task_mmu.c
+        fi
 
     - name: Apply Android 14 6.1 Fake Patches
       shell: bash
@@ -434,6 +438,10 @@ runs:
           perl -i -pe 's/ignored_mask:0/ignored_mask:%x/g' fs/notify/fdinfo.c
           sed -i 's|i_uid_into_mnt(i_user_ns(&fi->inode), &fi->inode).val|i_uid_into_mnt(\&init_user_ns, \&fi->inode).val|g' fs/susfs.c
           sed -i 's|i_uid_into_mnt(i_user_ns(inode), inode).val|i_uid_into_mnt(\&init_user_ns, inode).val|g' fs/susfs.c
+        fi
+        if [ "${{ inputs.sublevel }}" -ge "207" ]; then
+          echo "Reverting task_mmu.c Android 13 5.15 Fake Patch"
+          sed -i '/^#include <linux\/pkeys.h>$/a #include <trace/hooks/blk.h>' fs/proc/task_mmu.c
         fi
 
     - name: Revert Android 14 6.1 Fake Patches
