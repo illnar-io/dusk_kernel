@@ -262,5 +262,11 @@ runs:
             rm -f "$FILENAME"
             rm -f "$FILENAME.sha256"
           fi
+          # Cleanup any leftover archive artifacts (single-file or split parts)
+          if [ "${{ inputs.debug }}" = "true" ]; then
+            echo "Cleaning archive artifacts: ${BASE_FILENAME}*"
+          fi
+          rm -f "${BASE_FILENAME}"* || true
+
           echo "::endgroup::"
         done
