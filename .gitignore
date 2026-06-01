@@ -1,4 +1,5 @@
 AIO-REJ/
+*-Rejects/
 kernel-manifests/
 .aider*
 companion/*.zip
