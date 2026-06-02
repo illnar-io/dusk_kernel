@@ -188,14 +188,15 @@ jobs:
         set -euo pipefail
         DRIVER_DIR="drivers"
         test -d "common/drivers" && DRIVER_DIR="common/drivers"
+
+        # ----------------------------------------------------------------
+        # Step 1: Replace symlink with real files under drivers/kernelsu
+        # ----------------------------------------------------------------
         if [ -L "$DRIVER_DIR/kernelsu" ]; then
           echo "→ Replacing $DRIVER_DIR/kernelsu symlink with real files..."
           rm -f "$DRIVER_DIR/kernelsu"
           cp -r "KernelSU-Next/kernel" "$DRIVER_DIR/kernelsu"
           rm -rf "$DRIVER_DIR/kernelsu/.git"
-          # Fix include/uapi symlink: points to ../../uapi (KSU repo root)
-          # which breaks when copied into the kernel tree. Copy the real
-          # uapi/ directory in its place.
           if [ -L "$DRIVER_DIR/kernelsu/include/uapi" ]; then
             echo "→ Fixing include/uapi symlink..."
             rm -f "$DRIVER_DIR/kernelsu/include/uapi"
@@ -203,16 +204,33 @@ jobs:
             rm -rf "$DRIVER_DIR/kernelsu/include/uapi/.git"
             echo "✓ include/uapi is now a real directory"
           fi
-          # Force KSU to always compile (obj-y) regardless of CONFIG_KSU.
-          # Matching on keyword "kernelsu" avoids fragile $(CONFIG_KSU)
-          # escaping issues with sed.
-          sed -i '/kernelsu/d' "$DRIVER_DIR/Makefile"
-          echo "obj-y += kernelsu/" >> "$DRIVER_DIR/Makefile"
-          sed -i '/^obj-.*kernelsu\.o$/c\obj-y += kernelsu.o' "$DRIVER_DIR/kernelsu/Kbuild"
-          echo "✓ Forced KSU to obj-y in Makefile and Kbuild"
           echo "✓ $DRIVER_DIR/kernelsu is now a real directory"
         else
           echo "→ $DRIVER_DIR/kernelsu is not a symlink, skipping"
+        fi
+
+        # ----------------------------------------------------------------
+        # Step 2: Copy KSU source to init/ksu/ and force obj-y there.
+        # Kleaf/Bazel's kernel build doesn't seem to honor obj-y from
+        # drivers/Makefile for external modules, so we place KSU in init/
+        # which is always compiled unconditionally.
+        # ----------------------------------------------------------------
+        INIT_DIR="$DRIVER_DIR/../init"
+        if [ -d "$INIT_DIR" ]; then
+          echo "→ Copying KSU source to $INIT_DIR/ksu/ ..."
+          rm -rf "$INIT_DIR/ksu"
+          cp -r "$DRIVER_DIR/kernelsu" "$INIT_DIR/ksu"
+          sed -i '/^obj-.*kernelsu\.o$/c\obj-y += kernelsu.o' "$INIT_DIR/ksu/Kbuild"
+          echo "✓ Kbuild in init/ksu/ forced to obj-y"
+          # Add to init/Makefile if not already present
+          if ! grep -q "obj-y.*ksu" "$INIT_DIR/Makefile" 2>/dev/null; then
+            echo "obj-y += ksu/" >> "$INIT_DIR/Makefile"
+            echo "✓ Added obj-y += ksu/ to init/Makefile"
+          else
+            echo "→ init/Makefile already has ksu entry"
+          fi
+        else
+          echo "⚠ Init directory not found at $INIT_DIR"
         fi
 
     - name: Commit all kernel source modifications
