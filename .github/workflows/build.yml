@@ -193,6 +193,16 @@ jobs:
           rm -f "$DRIVER_DIR/kernelsu"
           cp -r "KernelSU-Next/kernel" "$DRIVER_DIR/kernelsu"
           rm -rf "$DRIVER_DIR/kernelsu/.git"
+          # Fix include/uapi symlink: points to ../../uapi (KSU repo root)
+          # which breaks when copied into the kernel tree. Copy the real
+          # uapi/ directory in its place.
+          if [ -L "$DRIVER_DIR/kernelsu/include/uapi" ]; then
+            echo "→ Fixing include/uapi symlink..."
+            rm -f "$DRIVER_DIR/kernelsu/include/uapi"
+            cp -r "KernelSU-Next/uapi" "$DRIVER_DIR/kernelsu/include/uapi"
+            rm -rf "$DRIVER_DIR/kernelsu/include/uapi/.git"
+            echo "✓ include/uapi is now a real directory"
+          fi
           echo "✓ $DRIVER_DIR/kernelsu is now a real directory"
         else
           echo "→ $DRIVER_DIR/kernelsu is not a symlink, skipping"
