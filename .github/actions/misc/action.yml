@@ -52,7 +52,7 @@ runs:
         CONFIG_LRU_GEN=y
         CONFIG_LRU_GEN_ENABLED=y
 
-        # ZRAM: module + zstd default (multi-compression built-in on 6.1.157+)
+        # ZRAM: module + lzo-rle default (faster decompression for Tensor A55)
         CONFIG_ZRAM=m
 
         # RCU_LAZY: activate by default (was DEFAULT_OFF)
@@ -94,16 +94,16 @@ runs:
         fi
 
         # ZRAM default compression algorithm - guard by Kconfig existence
-        if grep -rq "config ZRAM_DEF_COMP_ZSTD\b" "$KERNEL_COMMON" 2>/dev/null; then
-            echo '# CONFIG_ZRAM_DEF_COMP_LZORLE is not set' >> "$FRAGMENT"
-            echo 'CONFIG_ZRAM_DEF_COMP_ZSTD=y' >> "$FRAGMENT"
-            echo 'CONFIG_ZRAM_DEF_COMP="zstd"' >> "$FRAGMENT"
-            # ZRAM_DEF_COMP_ZSTD depends on ZSTD_COMPRESS in Kconfig
+        if grep -rq "config ZRAM_DEF_COMP_LZORLE\b" "$KERNEL_COMMON" 2>/dev/null; then
+            echo '# CONFIG_ZRAM_DEF_COMP_ZSTD is not set' >> "$FRAGMENT"
+            echo 'CONFIG_ZRAM_DEF_COMP_LZORLE=y' >> "$FRAGMENT"
+            echo 'CONFIG_ZRAM_DEF_COMP="lzo-rle"' >> "$FRAGMENT"
+            # ZRAM_DEF_COMP_LZORLE depends on CRYPTO_LZO; keep ZSTD_COMPRESS=y for F2FS
             echo 'CONFIG_ZSTD_COMPRESS=y' >> "$FRAGMENT"
         elif grep -rq "config ZRAM_DEF_COMP\b" "$KERNEL_COMMON" 2>/dev/null; then
             CONFIG_ZRAM_DEF_COMP=$(grep -rA5 "config ZRAM_DEF_COMP\b" "$KERNEL_COMMON" --include="Kconfig" 2>/dev/null)
             if echo "$CONFIG_ZRAM_DEF_COMP" | grep -q "string"; then
-                echo 'CONFIG_ZRAM_DEF_COMP="zstd"' >> "$FRAGMENT"
+                echo 'CONFIG_ZRAM_DEF_COMP="lzo-rle"' >> "$FRAGMENT"
             fi
         fi
 
