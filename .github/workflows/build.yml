@@ -203,22 +203,13 @@ jobs:
             rm -rf "$DRIVER_DIR/kernelsu/include/uapi/.git"
             echo "✓ include/uapi is now a real directory"
           fi
-          # Robustly force KSU to always compile (obj-y) regardless of CONFIG_KSU.
-          # The sed patterns below avoid any $ escaping issues by matching on
-          # "kernelsu" or "^obj-.*kernelsu\.o$" instead of literal $(CONFIG_KSU).
+          # Force KSU to always compile (obj-y) regardless of CONFIG_KSU.
+          # Matching on keyword "kernelsu" avoids fragile $(CONFIG_KSU)
+          # escaping issues with sed.
           sed -i '/kernelsu/d' "$DRIVER_DIR/Makefile"
           echo "obj-y += kernelsu/" >> "$DRIVER_DIR/Makefile"
           sed -i '/^obj-.*kernelsu\.o$/c\obj-y += kernelsu.o' "$DRIVER_DIR/kernelsu/Kbuild"
           echo "✓ Forced KSU to obj-y in Makefile and Kbuild"
-          # Belt-and-suspenders: add CONFIG_KSU=y to gki_defconfig so the
-          # config system always enables it regardless of fragment processing.
-          for dc in "$DRIVER_DIR/../arch/arm64/configs/gki_defconfig" \
-                    "$DRIVER_DIR/arch/arm64/configs/gki_defconfig"; do
-            if [ -f "$dc" ] && ! grep -q "CONFIG_KSU=y" "$dc" 2>/dev/null; then
-              echo "CONFIG_KSU=y" >> "$dc"
-              echo "✓ Added CONFIG_KSU=y to $dc"
-            fi
-          done
           echo "✓ $DRIVER_DIR/kernelsu is now a real directory"
         else
           echo "→ $DRIVER_DIR/kernelsu is not a symlink, skipping"
