@@ -203,6 +203,11 @@ jobs:
             rm -rf "$DRIVER_DIR/kernelsu/include/uapi/.git"
             echo "✓ include/uapi is now a real directory"
           fi
+          # Force KSU to always compile (obj-y) regardless of CONFIG_KSU
+          # so Bazel/Kleaf picks it up even if the Kconfig isn't sourced.
+          sed -i 's/obj-\$(CONFIG_KSU) += kernelsu\//obj-y += kernelsu\//' "$DRIVER_DIR/Makefile"
+          sed -i 's/obj-\$(CONFIG_KSU) += kernelsu.o/obj-y += kernelsu.o/' "$DRIVER_DIR/kernelsu/Kbuild"
+          echo "✓ Forced KSU to obj-y in Makefile and Kbuild"
           echo "✓ $DRIVER_DIR/kernelsu is now a real directory"
         else
           echo "→ $DRIVER_DIR/kernelsu is not a symlink, skipping"
