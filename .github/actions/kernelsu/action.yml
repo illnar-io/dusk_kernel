@@ -28,6 +28,7 @@ runs:
           sed -i "s/^KSU_VERSION_FALLBACK := 1$/KSU_VERSION_FALLBACK := ${KSU_VERSION}/" Kbuild
           KSU_GIT_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.1")"
           sed -i "s/^KSU_VERSION_TAG_FALLBACK := v0.0.1$/KSU_VERSION_TAG_FALLBACK := ${KSU_GIT_TAG}/" Kbuild
+
         elif [[ "$ROOT" == "SukiSU-Ultra" ]] || [[ "$ROOT" == "SKSU" ]]; then
           echo "  Cloning SukiSU-Ultra..."
           curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/builtin/kernel/setup.sh" | bash -s builtin
@@ -113,3 +114,5 @@ runs:
         fi
         cp ${{ github.action_path }}/patches/static.patch "${{ github.workspace }}/kernel/KernelSU-Next/static.patch"
         patch -p1 < static.patch
+
+

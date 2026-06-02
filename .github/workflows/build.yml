@@ -181,6 +181,23 @@ jobs:
     - name: Clean Kernel Flags
       uses: ./.github/actions/clean-kernel-flags
 
+    - name: Replace KSU symlink with real files (Bazel compat)
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel
+      run: |
+        set -euo pipefail
+        DRIVER_DIR="drivers"
+        test -d "common/drivers" && DRIVER_DIR="common/drivers"
+        if [ -L "$DRIVER_DIR/kernelsu" ]; then
+          echo "→ Replacing $DRIVER_DIR/kernelsu symlink with real files..."
+          rm -f "$DRIVER_DIR/kernelsu"
+          cp -r "KernelSU-Next/kernel" "$DRIVER_DIR/kernelsu"
+          rm -rf "$DRIVER_DIR/kernelsu/.git"
+          echo "✓ $DRIVER_DIR/kernelsu is now a real directory"
+        else
+          echo "→ $DRIVER_DIR/kernelsu is not a symlink, skipping"
+        fi
+
     - name: Commit all kernel source modifications
       shell: bash
       run: |
