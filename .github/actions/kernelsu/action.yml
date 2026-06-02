@@ -100,3 +100,16 @@ runs:
         else
           echo "⚠ KSU directory not found in kernel/ or workspace root: ${KSU_DIR}"
         fi
+
+    - name: 'Fix KernelSU-Next SELinux declarations'
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel/KernelSU-Next
+      run: |
+        set -euo pipefail
+        ROOT="${{ inputs.root }}"
+        if [[ "$ROOT" != "KernelSU-Next" && "$ROOT" != "KSUN" ]]; then
+          echo "Skipping — not KernelSU-Next"
+          exit 0
+        fi
+        cp ${{ github.action_path }}/patches/static.patch "${{ github.workspace }}/kernel/KernelSU-Next/static.patch"
+        patch -p1 < static.patch
