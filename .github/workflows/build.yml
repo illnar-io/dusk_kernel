@@ -100,6 +100,29 @@ jobs:
         os_patch_level: ${{ steps.parse.outputs.os_patch_level }}
         sublevel: ${{ steps.extract.outputs.sublevel }}
 
+    - name: Fix SELinux declarations (after SUSFS, to avoid ksun-* conflict)
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel/KernelSU-Next
+      run: |
+        set -euo pipefail
+        ROOT="${{ inputs.root }}"
+        if [[ "$ROOT" != "KernelSU-Next" && "$ROOT" != "KSUN" ]]; then
+          echo "Skipping — not KernelSU-Next"
+          exit 0
+        fi
+        PATCH="${{ github.workspace }}/.github/actions/kernelsu/patches/static.patch"
+        cp "$PATCH" static.patch
+        # Apply with fuzz=3 — the SUSFS patches may have added adjacent lines
+        # to kernel/feature/selinux_hide.c, but the function declarations
+        # we need to change are still present (just no longer static).
+        patch -p1 --fuzz=3 --force < static.patch || {
+          echo "⚠ static.patch with fuzz failed — trying to sed directly"
+          sed -i 's/^static int security_context_to_sid_with_policy/int security_context_to_sid_with_policy/' kernel/feature/selinux_hide.c
+          sed -i 's/^static int security_sid_to_context_with_policy/int security_sid_to_context_with_policy/' kernel/feature/selinux_hide.c
+          sed -i 's/^static void security_compute_av_user_with_policy/void security_compute_av_user_with_policy/' kernel/feature/selinux_hide.c
+          echo "✓ Applied via sed fallback"
+        }
+
     - name: NTSYNC
       uses: ./.github/actions/ntsync
       with:
