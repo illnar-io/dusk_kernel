@@ -226,11 +226,11 @@ jobs:
             echo "obj-y += ksu/" >> "$SEC_DIR/Makefile"
             echo "✓ Added obj-y += ksu/ to security/Makefile"
           fi
-          # Remove KSU entries from drivers/Makefile+Kconfig to prevent
-          # dual compilation and stale config references.
+          # Remove KSU from drivers/Makefile to prevent dual compilation.
+          # Keep Kconfig sourced so CONFIG_KSU is a valid symbol — Kleaf
+          # validates fragment settings against Kconfig definitions.
           sed -i '/kernelsu/d' "$DRIVER_DIR/Makefile"
-          sed -i '/kernelsu\/Kconfig/d' "$DRIVER_DIR/Kconfig"
-          echo "✓ Removed kernelsu entries from drivers/Makefile and Kconfig"
+          echo "✓ Removed kernelsu entry from drivers/Makefile (Kconfig kept)"
         else
           echo "⚠ security/ or drivers/kernelsu/ not found"
         fi
