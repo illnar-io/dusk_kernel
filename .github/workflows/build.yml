@@ -181,7 +181,7 @@ jobs:
     - name: Clean Kernel Flags
       uses: ./.github/actions/clean-kernel-flags
 
-    - name: Replace KSU symlink and set up dual compilation (drivers + security)
+    - name: Replace KSU symlink and set up KSU compilation
       shell: bash
       working-directory: ${{ github.workspace }}/kernel
       run: |
@@ -210,11 +210,11 @@ jobs:
         fi
 
         # ----------------------------------------------------------------
-        # Step 2: Copy KSU source to security/ksu/ with obj-y.
-        # Dual compilation (drivers/ + security/) is the only arrangement
-        # that reliably produces KSU symbols under Kleaf (proved in
-        # commit 3bedd9f).  Each location uses its own Kbuild with obj-y,
-        # so KSU is compiled twice; the LTO linker resolves duplicates.
+        # Step 2: Copy KSU source to security/ksu/ for include-path
+        #          resolution, but sterilise its Kbuild so only
+        #          drivers/kernelsu/ (the setup.sh location) produces
+        #          object code.  Kleaf processes both directories, but
+        #          linking duplicates causes ld.lld errors.
         # ----------------------------------------------------------------
         SEC_DIR="$DRIVER_DIR/../security"
         if [ -d "$SEC_DIR" ]; then
@@ -222,50 +222,25 @@ jobs:
           rm -rf "$SEC_DIR/ksu"
           cp -r "$DRIVER_DIR/kernelsu" "$SEC_DIR/ksu"
 
-          # Force security/ksu/Kbuild to use unconditional obj-y
-          sed -i '/^obj-.*kernelsu\.o$/c\obj-y += kernelsu.o' "$SEC_DIR/ksu/Kbuild"
-          echo "✓ security/ksu/Kbuild forced to obj-y"
-
-          # Add ksu/ to security/Makefile if not already present
-          if ! grep -q "obj-y.*ksu" "$SEC_DIR/Makefile" 2>/dev/null; then
-            echo "obj-y += ksu/" >> "$SEC_DIR/Makefile"
-            echo "✓ Added obj-y += ksu/ to security/Makefile"
-          fi
-
-          # selinux/flask.h dependency is needed for both copies; add it
-          echo '$(obj)/ksu/selinux/selinux.o: $(obj)/selinux/flask.h' >> "$SEC_DIR/Makefile"
-          echo "✓ Added flask.h dependency for KSU selinux/selinux.o"
-
-          # Keep drivers/kernelsu/Kbuild as-is from KernelSU-Next/setup.sh.
-          # Dual compilation (drivers + security) is the only arrangement
-          # that reliably produces KSU symbols under Kleaf — the original
-          # drivers/kernelsu entry with obj-$(CONFIG_KSU) is essential.
-          echo "✓ Kept drivers/kernelsu/Kbuild with original obj-$(CONFIG_KSU)"
+          sed -i '/^obj-\$(CONFIG_KSU) .*kernelsu\.o$/d' "$SEC_DIR/ksu/Kbuild"
+          echo "✓ security/ksu/Kbuild obj entry removed (drivers is primary)"
         else
           echo "⚠ security/ directory not found"
         fi
 
         # ----------------------------------------------------------------
-        # Diagnostic: verify KSU locations exist and have valid Kbuild
+        # Diagnostic: verify KSU primary location
         # ----------------------------------------------------------------
         echo ""
         echo "=== KSU Kbuild verification ==="
-        for ksu_path in "$DRIVER_DIR/kernelsu" "${SEC_DIR:-NONE}/ksu"; do
-          kbuild="$ksu_path/Kbuild"
-          if [ -f "$kbuild" ]; then
-            entry=$(grep -c 'obj-' "$kbuild" || true)
-            total=$(wc -l < "$kbuild")
-            echo "  $kbuild: $total lines, $entry obj- entries"
-            echo "    └─ obj line: $(grep '^obj-' "$kbuild" | head -1)"
-          else
-            echo "  SKIP: $kbuild not present"
-          fi
-        done
-        for mfile in "$DRIVER_DIR/Makefile" "${SEC_DIR:-NONE}/Makefile"; do
-          if [ -f "$mfile" ] && grep -q "kernelsu\|ksu" "$mfile" 2>/dev/null; then
-            echo "  $mfile: $(grep -c 'kernelsu\|ksu' "$mfile") KSU references"
-          fi
-        done
+        kbuild="$DRIVER_DIR/kernelsu/Kbuild"
+        if [ -f "$kbuild" ]; then
+          entry=$(grep -c '^obj-' "$kbuild" || true)
+          total=$(wc -l < "$kbuild")
+          echo "  $kbuild: $total lines, $entry obj- entries"
+        else
+          echo "  WARN: $kbuild not present"
+        fi
         echo "=== End KSU verification ==="
 
     - name: Commit all kernel source modifications
