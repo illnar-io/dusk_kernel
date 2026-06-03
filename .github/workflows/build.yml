@@ -210,29 +210,17 @@ jobs:
         fi
 
         # ----------------------------------------------------------------
-        # Step 2: Place KSU in security/ksu/ where obj-y works reliably.
-        # Remove the drivers/Makefile KSU entry so KSU isn't compiled
-        # twice.  Keep drivers/kernelsu/ directory intact for SUSFS
-        # patches that reference it.
+        # Step 2: Verify drivers/Makefile has KSU entry.
+        # The setup.sh already adds obj-$(CONFIG_KSU) += kernelsu/ to
+        # drivers/Makefile.  KSU compiles correctly from drivers/ because
+        # drivers/ is processed after security/selinux/ (flask.h exists).
         # ----------------------------------------------------------------
-        SEC_DIR="$DRIVER_DIR/../security"
-        if [ -d "$SEC_DIR" ] && [ -d "$DRIVER_DIR/kernelsu" ]; then
-          echo "→ Copying KSU source to $SEC_DIR/ksu/ ..."
-          rm -rf "$SEC_DIR/ksu"
-          cp -r "$DRIVER_DIR/kernelsu" "$SEC_DIR/ksu"
-          sed -i '/^obj-.*kernelsu\.o$/c\obj-y += kernelsu.o' "$SEC_DIR/ksu/Kbuild"
-          echo "✓ Kbuild in security/ksu/ forced to obj-y"
-          if ! grep -q "obj-y.*ksu" "$SEC_DIR/Makefile" 2>/dev/null; then
-            echo "obj-y += ksu/" >> "$SEC_DIR/Makefile"
-            echo "✓ Added obj-y += ksu/ to security/Makefile"
-          fi
-          # Remove KSU from drivers/Makefile to prevent dual compilation.
-          # Keep Kconfig sourced so CONFIG_KSU is a valid symbol — Kleaf
-          # validates fragment settings against Kconfig definitions.
-          sed -i '/kernelsu/d' "$DRIVER_DIR/Makefile"
-          echo "✓ Removed kernelsu entry from drivers/Makefile (Kconfig kept)"
+        if ! grep -q "kernelsu" "$DRIVER_DIR/Makefile" 2>/dev/null; then
+          echo "→ KSU entry missing from drivers/Makefile, adding..."
+          echo "obj-\$(CONFIG_KSU) += kernelsu/" >> "$DRIVER_DIR/Makefile"
+          echo "✓ Added KSU entry to drivers/Makefile"
         else
-          echo "⚠ security/ or drivers/kernelsu/ not found"
+          echo "✓ KSU entry found in drivers/Makefile"
         fi
 
     - name: Commit all kernel source modifications
