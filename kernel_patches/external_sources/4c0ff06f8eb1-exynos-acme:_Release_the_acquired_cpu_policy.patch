@@ -1,0 +1,43 @@
+From 4c0ff06f8eb1b7195f144b1a23de353d5a0b18b5 Mon Sep 17 00:00:00 2001
+From: Dyneteve <dyneteve@hentaios.com>
+Date: Thu, 4 Apr 2024 18:35:59 +0000
+Subject: [PATCH] exynos-acme: Release the acquired cpu policy
+
+Signed-off-by: Dyneteve <dyneteve@hentaios.com>
+---
+ google-modules/soc/gs/drivers/cpufreq/exynos-acme.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/google-modules/soc/gs/drivers/cpufreq/exynos-acme.c b/google-modules/soc/gs/drivers/cpufreq/exynos-acme.c
+index 0383fe3b6..b75f0d2af 100644
+--- a/google-modules/soc/gs/drivers/cpufreq/exynos-acme.c
++++ b/google-modules/soc/gs/drivers/cpufreq/exynos-acme.c
+@@ -606,8 +606,11 @@ static int exynos_cpufreq_pm_notifier(struct notifier_block *notifier,
+ 			policy = cpufreq_cpu_get(cpumask_any(&domain->cpus));
+ 			if (!policy)
+ 				continue;
+-			if (__exynos_cpufreq_suspend(policy, domain))
++			if (__exynos_cpufreq_suspend(policy, domain)) {
++				cpufreq_cpu_put(policy);
+ 				return NOTIFY_BAD;
++			}
++			cpufreq_cpu_put(policy);
+ 		}
+ 		break;
+ 	case PM_POST_SUSPEND:
+@@ -615,8 +618,11 @@ static int exynos_cpufreq_pm_notifier(struct notifier_block *notifier,
+ 			policy = cpufreq_cpu_get(cpumask_any(&domain->cpus));
+ 			if (!policy)
+ 				continue;
+-			if (__exynos_cpufreq_resume(policy, domain))
++			if (__exynos_cpufreq_resume(policy, domain)) {
++				cpufreq_cpu_put(policy);
+ 				return NOTIFY_BAD;
++			}
++			cpufreq_cpu_put(policy);
+ 		}
+ 		break;
+ 	}
+-- 
+2.54.0
+

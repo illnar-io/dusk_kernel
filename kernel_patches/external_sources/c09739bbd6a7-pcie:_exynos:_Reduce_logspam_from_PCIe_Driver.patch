@@ -1,0 +1,48 @@
+From c09739bbd6a7753d3b21a9cb9a93cc63d4b2c6ea Mon Sep 17 00:00:00 2001
+From: Sajid Dalvi <sdalvi@google.com>
+Date: Mon, 19 Sep 2022 14:29:15 -0500
+Subject: [PATCH] pcie: exynos: Reduce logspam from PCIe Driver
+
+Change some of the dev_info messages to dev_dbg to reduce the logspam.
+
+Bug: 247124616
+Signed-off-by: Sajid Dalvi <sdalvi@google.com>
+Change-Id: I35c52d849a0b9bbab2785c463b44fdaaa763c9ac
+---
+ .../gs/drivers/pci/controller/dwc-whi/pcie-exynos-rc.c    | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/google-modules/soc/gs/drivers/pci/controller/dwc-whi/pcie-exynos-rc.c b/google-modules/soc/gs/drivers/pci/controller/dwc-whi/pcie-exynos-rc.c
+index 419e39b41..521421e3f 100644
+--- a/google-modules/soc/gs/drivers/pci/controller/dwc-whi/pcie-exynos-rc.c
++++ b/google-modules/soc/gs/drivers/pci/controller/dwc-whi/pcie-exynos-rc.c
+@@ -423,14 +423,14 @@ void exynos_pcie_set_perst_gpio(int ch_num, bool on)
+ 	struct exynos_pcie *exynos_pcie = &g_pcie_rc[ch_num];
+ 
+ 	if (exynos_pcie->ep_device_type == EP_SAMSUNG_MODEM) {
+-		pr_info("%s: force settig for abnormal state\n", __func__);
++		pr_debug("%s: force settig for abnormal state\n", __func__);
+ 		if (on) {
+ 			gpio_set_value(exynos_pcie->perst_gpio, 1);
+-			pr_info("%s: Set PERST to HIGH, gpio val = %d\n",
++			pr_debug("%s: Set PERST to HIGH, gpio val = %d\n",
+ 				__func__, gpio_get_value(exynos_pcie->perst_gpio));
+ 		} else {
+ 			gpio_set_value(exynos_pcie->perst_gpio, 0);
+-			pr_info("%s: Set PERST to LOW, gpio val = %d\n",
++			pr_debug("%s: Set PERST to LOW, gpio val = %d\n",
+ 				__func__, gpio_get_value(exynos_pcie->perst_gpio));
+ 		}
+ 	}
+@@ -3847,7 +3847,7 @@ static int exynos_pcie_rc_establish_link(struct dw_pcie_rp *pp)
+ 				__func__, try_cnt);
+ 			if (try_cnt < 10) {
+ 				gpio_set_value(exynos_pcie->perst_gpio, 0);
+-				dev_info(dev, "Set PERST LOW, gpio val = %d\n",
++				dev_dbg(dev, "Set PERST LOW, gpio val = %d\n",
+ 					gpio_get_value(exynos_pcie->perst_gpio));
+ 				/* LTSSM disable */
+ 				exynos_elbi_write(exynos_pcie, PCIE_ELBI_LTSSM_DISABLE,
+-- 
+2.54.0
+

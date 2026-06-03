@@ -1,0 +1,34 @@
+From 926a5e99b65cb6e22e206e505fb386852c5b720a Mon Sep 17 00:00:00 2001
+From: Miaohe Lin <linmiaohe@huawei.com>
+Date: Tue, 4 Jul 2023 19:30:49 +0800
+Subject: [PATCH] cgroup/cpuset: simplify the percpu kthreads check in
+ update_tasks_cpumask()
+
+kthread_is_per_cpu() can be called directly without checking whether
+PF_KTHREAD is set in task->flags. So remove PF_KTHREAD check to make
+code more concise.
+
+Signed-off-by: Miaohe Lin <linmiaohe@huawei.com>
+Reviewed-by: Waiman Long <longman@redhat.com>
+Signed-off-by: Tejun Heo <tj@kernel.org>
+---
+ kernel/cgroup/cpuset.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/kernel/cgroup/cpuset.c b/kernel/cgroup/cpuset.c
+index 276f6dbf8..90787428c 100644
+--- a/kernel/cgroup/cpuset.c
++++ b/kernel/cgroup/cpuset.c
+@@ -1295,8 +1295,7 @@ static void update_tasks_cpumask(struct cpuset *cs, struct cpumask *new_cpus)
+ 		/*
+ 		 * Percpu kthreads in top_cpuset are ignored
+ 		 */
+-		if (top_cs && (task->flags & PF_KTHREAD) &&
+-		    kthread_is_per_cpu(task))
++		if (top_cs && kthread_is_per_cpu(task))
+ 			continue;
+ 
+ 		cpumask_and(new_cpus, cs->effective_cpus,
+-- 
+2.54.0
+

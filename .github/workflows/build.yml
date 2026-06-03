@@ -161,6 +161,11 @@ jobs:
         kernel_version: ${{ steps.parse.outputs.kernel_version }}
         sublevel: ${{ steps.extract.outputs.sublevel }}
 
+    - name: External Source Patches (GKI-Duchamp, guacamole_sickness, Kirisakura)
+      uses: ./.github/actions/external-patches
+      with:
+        kernel_version: ${{ steps.parse.outputs.kernel_version }}
+
     - name: Apply Module Check Bypass
       if: ${{ inputs.variant == 'Bypass' }}
       uses: ./.github/actions/module-check-bypass

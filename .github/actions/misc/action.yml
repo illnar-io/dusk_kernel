@@ -159,5 +159,13 @@ runs:
         add_cfg "CONFIG_IP6_NF_TARGET_HL=y"
         add_cfg "CONFIG_IP6_NF_MATCH_HL=y"
 
+        # === Kirisakura_Raviole inspired configs ===
+        add_cfg "CONFIG_RT_SOFTINT_OPTIMIZATION=y"
+        add_cfg "CONFIG_USERFAULTFD=y"
+        add_cfg "CONFIG_SCHED_MC=y"
+        add_cfg "CONFIG_SLAB_FREELIST_RANDOM=y"
+        add_cfg "CONFIG_SLAB_FREELIST_HARDENED=y"
+        add_cfg "CONFIG_SHUFFLE_PAGE_ALLOCATOR=y"
+
         # Note: disabling debug via =n is incompatible with GKI config checker
         # when dependencies aren't met. These default to n in production builds.

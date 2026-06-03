@@ -1,0 +1,50 @@
+From 2616c49be7bac4df05a1eed6740ee2de1676752c Mon Sep 17 00:00:00 2001
+From: Sultan Alsawaf <sultan@kerneltoast.com>
+Date: Wed, 14 Jun 2023 23:02:00 -0700
+Subject: [PATCH] pcie: exynos: Use the internal irq_set_wake() helper to set
+ IRQ wake
+
+Setting IRQ wakeability for a chained IRQ via the public helpers shouldn't
+be done from the chained IRQ's driver. Instead, use the parent IRQ's
+irq_set_wake() helper directly, which fixes a lockdep warning.
+
+Signed-off-by: Sultan Alsawaf <sultan@kerneltoast.com>
+---
+ .../drivers/pci/controller/dwc-whi/pcie-exynos-rc.c   | 11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
+
+diff --git a/google-modules/soc/gs/drivers/pci/controller/dwc-whi/pcie-exynos-rc.c b/google-modules/soc/gs/drivers/pci/controller/dwc-whi/pcie-exynos-rc.c
+index 521421e3f..d187dd303 100644
+--- a/google-modules/soc/gs/drivers/pci/controller/dwc-whi/pcie-exynos-rc.c
++++ b/google-modules/soc/gs/drivers/pci/controller/dwc-whi/pcie-exynos-rc.c
+@@ -5127,9 +5127,9 @@ EXPORT_SYMBOL_GPL(exynos_pcie_rc_set_affinity);
+ 
+ int exynos_pcie_rc_set_enable_wake(struct irq_data *data, unsigned int enable)
+ {
+-	int ret = 0;
+ 	struct dw_pcie_rp *pp = data->parent_data->domain->host_data;
+ 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
++	struct irq_data *parent;
+ 
+ 	dev_dbg(pci->dev, "%s: enable = %d\n", __func__, enable);
+ 
+@@ -5138,12 +5138,11 @@ int exynos_pcie_rc_set_enable_wake(struct irq_data *data, unsigned int enable)
+ 		return -EINVAL;
+ 	}
+ 
+-	if (enable)
+-		ret = enable_irq_wake(pp->irq);
+-	else
+-		ret = disable_irq_wake(pp->irq);
++	parent = irq_get_irq_data(pp->irq);
++	if (parent && parent->chip->irq_set_wake)
++		return parent->chip->irq_set_wake(parent, enable);
+ 
+-	return ret;
++	return -EINVAL;
+ }
+ 
+ #if IS_ENABLED(CONFIG_CPU_IDLE)
+-- 
+2.54.0
+

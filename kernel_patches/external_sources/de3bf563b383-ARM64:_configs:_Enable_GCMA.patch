@@ -1,0 +1,33 @@
+From de3bf563b383ceea5aa5a679a20aec4c0c597ae8 Mon Sep 17 00:00:00 2001
+From: "M. \"Harumajati\" Alfarozi" <reinazhard@gmail.com>
+Date: Mon, 2 Mar 2026 15:00:08 +0700
+Subject: [PATCH] ARM64: configs: Enable GCMA
+
+Signed-off-by: M. "Harumajati" Alfarozi <reinazhard@gmail.com>
+---
+ arch/arm64/configs/raviole_defconfig | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/arch/arm64/configs/raviole_defconfig b/arch/arm64/configs/raviole_defconfig
+index b57ea37f3..478e5a820 100644
+--- a/arch/arm64/configs/raviole_defconfig
++++ b/arch/arm64/configs/raviole_defconfig
+@@ -736,6 +736,7 @@ CONFIG_DEBUG_SNAPSHOT_SFRDUMP=m
+ CONFIG_DEBUG_SNAPSHOT_QUICKDUMP=m
+ CONFIG_DEBUG_SNAPSHOT_DEBUG_KINFO=m
+ CONFIG_EXYNOS_CORESIGHT=m
++CONFIG_GCMA=m
+ CONFIG_GS_S2MPU=m
+ CONFIG_PIXEL_METRICS=m
+ CONFIG_VH_FS=m
+@@ -767,6 +768,7 @@ CONFIG_DMABUF_SAMSUNG_HEAPS=m
+ CONFIG_DMABUF_HEAPS_SAMSUNG_CHUNK=y
+ CONFIG_DMABUF_HEAPS_SAMSUNG_CMA=y
+ CONFIG_DMABUF_HEAPS_SAMSUNG_CARVEOUT=y
++CONFIG_DMABUF_HEAPS_GOOGLE_GCMA=y
+ CONFIG_DMABUF_HEAPS_SAMSUNG_SYSTEM=y
+ CONFIG_SPI_S3C64XX_GS=m
+ CONFIG_PINCTRL_EXYNOS_GS=m
+-- 
+2.54.0
+
