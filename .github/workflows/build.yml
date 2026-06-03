@@ -236,17 +236,11 @@ jobs:
           echo '$(obj)/ksu/selinux/selinux.o: $(obj)/selinux/flask.h' >> "$SEC_DIR/Makefile"
           echo "✓ Added flask.h dependency for KSU selinux/selinux.o"
 
-          # Sterilize drivers/kernelsu/Kbuild to prevent dual compilation.
-          # Kleaf requires the drivers/Makefile entry (from setup.sh), but
-          # we only want security/ksu/ to produce the actual objects.
-          # Delete obj- line, all kernelsu-objs lines, and ccflags-y lines.
-          sed -i \
-            -e '/^obj-\$(CONFIG_KSU) .*kernelsu\.o$/d' \
-            -e '/^kernelsu-objs [:+]=/d' \
-            -e '/^kernelsu-objs +=/d' \
-            -e '/^ccflags-y/d' \
-            "$DRIVER_DIR/kernelsu/Kbuild"
-          echo "✓ Sterilized drivers/kernelsu/Kbuild (security/ksu/ is primary)"
+          # Keep drivers/kernelsu/Kbuild as-is from KernelSU-Next/setup.sh.
+          # Dual compilation (drivers + security) is the only arrangement
+          # that reliably produces KSU symbols under Kleaf — the original
+          # drivers/kernelsu entry with obj-$(CONFIG_KSU) is essential.
+          echo "✓ Kept drivers/kernelsu/Kbuild with original obj-$(CONFIG_KSU)"
         else
           echo "⚠ security/ directory not found"
         fi
