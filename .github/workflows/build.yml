@@ -210,17 +210,32 @@ jobs:
         fi
 
         # ----------------------------------------------------------------
-        # Step 2: Verify drivers/Makefile has KSU entry.
-        # The setup.sh already adds obj-$(CONFIG_KSU) += kernelsu/ to
-        # drivers/Makefile.  KSU compiles correctly from drivers/ because
-        # drivers/ is processed after security/selinux/ (flask.h exists).
+        # Step 2: Copy KSU source to security/ksu/ with obj-y.
+        # security/selinux/ generates flask.h that KSU's selinux/selinux.c
+        # needs.  An explicit make dependency ensures flask.h exists before
+        # KSU compiles.  Remove the drivers/Makefile KSU entry to prevent
+        # dual compilation.  Keep Kconfig sourced for CONFIG_KSU validity.
         # ----------------------------------------------------------------
-        if ! grep -q "kernelsu" "$DRIVER_DIR/Makefile" 2>/dev/null; then
-          echo "→ KSU entry missing from drivers/Makefile, adding..."
-          echo "obj-\$(CONFIG_KSU) += kernelsu/" >> "$DRIVER_DIR/Makefile"
-          echo "✓ Added KSU entry to drivers/Makefile"
+        SEC_DIR="$DRIVER_DIR/../security"
+        if [ -d "$SEC_DIR" ] && [ -d "$DRIVER_DIR/kernelsu" ]; then
+          echo "→ Copying KSU source to $SEC_DIR/ksu/ ..."
+          rm -rf "$SEC_DIR/ksu"
+          cp -r "$DRIVER_DIR/kernelsu" "$SEC_DIR/ksu"
+          sed -i '/^obj-.*kernelsu\.o$/c\obj-y += kernelsu.o' "$SEC_DIR/ksu/Kbuild"
+          echo "✓ Kbuild in security/ksu/ forced to obj-y"
+          if ! grep -q "obj-y.*ksu" "$SEC_DIR/Makefile" 2>/dev/null; then
+            echo "obj-y += ksu/" >> "$SEC_DIR/Makefile"
+            echo "✓ Added obj-y += ksu/ to security/Makefile"
+          fi
+          # Add explicit dep: KSU's selinux/selinux.o needs generated flask.h
+          echo '$(obj)/ksu/selinux/selinux.o: $(obj)/selinux/flask.h' >> "$SEC_DIR/Makefile"
+          echo "✓ Added flask.h dependency for KSU selinux/selinux.o"
+          # Remove KSU from drivers/Makefile to prevent dual compilation.
+          # Keep Kconfig sourced so CONFIG_KSU is a valid symbol.
+          sed -i '/kernelsu/d' "$DRIVER_DIR/Makefile"
+          echo "✓ Removed kernelsu entry from drivers/Makefile (Kconfig kept)"
         else
-          echo "✓ KSU entry found in drivers/Makefile"
+          echo "⚠ security/ or drivers/kernelsu/ not found"
         fi
 
     - name: Commit all kernel source modifications
