@@ -210,11 +210,10 @@ jobs:
         fi
 
         # ----------------------------------------------------------------
-        # Step 2: Copy KSU source to security/ksu/ with unconditional
-        # obj-y.  The original drivers/Makefile entry
-        # (obj-$(CONFIG_KSU) += kernelsu/) is CONDITIONAL and Kleaf
-        # doesn't resolve it correctly, so we place a second copy in
-        # security/ and disable the drivers/ copy's Kbuild.
+        # Step 2: Place KSU in security/ksu/ where obj-y works reliably.
+        # Remove the drivers/Makefile KSU entry so KSU isn't compiled
+        # twice.  Keep drivers/kernelsu/ directory intact for SUSFS
+        # patches that reference it.
         # ----------------------------------------------------------------
         SEC_DIR="$DRIVER_DIR/../security"
         if [ -d "$SEC_DIR" ] && [ -d "$DRIVER_DIR/kernelsu" ]; then
@@ -227,12 +226,11 @@ jobs:
             echo "obj-y += ksu/" >> "$SEC_DIR/Makefile"
             echo "✓ Added obj-y += ksu/ to security/Makefile"
           fi
-          # Explicit dep: KSU's selinux/selinux.o needs generated flask.h
-          echo '$(obj)/ksu/selinux/selinux.o: $(obj)/selinux/flask.h' >> "$SEC_DIR/Makefile"
-          echo "✓ Added flask.h dependency"
-          # Disable drivers/kernelsu/Kbuild so KSU isn't compiled twice
-          sed -i '/^obj-.*kernelsu\.o$/s/^/#/' "$DRIVER_DIR/kernelsu/Kbuild"
-          echo "✓ Disabled KSU compilation from drivers/kernelsu/"
+          # Remove KSU entries from drivers/Makefile+Kconfig to prevent
+          # dual compilation and stale config references.
+          sed -i '/kernelsu/d' "$DRIVER_DIR/Makefile"
+          sed -i '/kernelsu\/Kconfig/d' "$DRIVER_DIR/Kconfig"
+          echo "✓ Removed kernelsu entries from drivers/Makefile and Kconfig"
         else
           echo "⚠ security/ or drivers/kernelsu/ not found"
         fi
