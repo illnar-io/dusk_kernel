@@ -22,6 +22,7 @@ runs:
           "CONFIG_CGROUP_PIDS=y"
           "CONFIG_USER_NS=y"
           "CONFIG_OVERLAY_FS=y"
+          "CONFIG_KSU=y"
         )
 
         # These namespaces are not supported on kernel 5.10 (header stubs

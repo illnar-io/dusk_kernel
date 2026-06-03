@@ -181,7 +181,7 @@ jobs:
     - name: Clean Kernel Flags
       uses: ./.github/actions/clean-kernel-flags
 
-    - name: Replace KSU symlink with real files (Bazel compat)
+    - name: Replace KSU symlink and set up dual compilation (drivers + security)
       shell: bash
       working-directory: ${{ github.workspace }}/kernel
       run: |
@@ -204,48 +204,91 @@ jobs:
             rm -rf "$DRIVER_DIR/kernelsu/include/uapi/.git"
             echo "✓ include/uapi is now a real directory"
           fi
-          echo "✓ $DRIVER_DIR/kernelsu is now a real directory"
+          echo "✓ $DRIVER_DIR/kernelsu is now a real directory (with driver copy)"
         else
           echo "→ $DRIVER_DIR/kernelsu is not a symlink, skipping"
         fi
 
         # ----------------------------------------------------------------
-        # Step 2: Copy KSU source to security/ksu/ with obj-y and sterilize
-        # the drivers/ copy to prevent dual compilation.  Kleaf requires
-        # the drivers/Makefile entry to exist (setup.sh added it) for the
-        # Kbuild chain to be processed; without it, Kleaf may skip the
-        # Makefile processing entirely for some kernel sublevels.
+        # Step 2: Copy KSU source to security/ksu/ with obj-y.
+        # Dual compilation (drivers/ + security/) is the only arrangement
+        # that reliably produces KSU symbols under Kleaf (proved in
+        # commit 3bedd9f).  Each location uses its own Kbuild with obj-y,
+        # so KSU is compiled twice; the LTO linker resolves duplicates.
         # ----------------------------------------------------------------
         SEC_DIR="$DRIVER_DIR/../security"
         if [ -d "$SEC_DIR" ]; then
           echo "→ Copying KSU source to $SEC_DIR/ksu/ ..."
           rm -rf "$SEC_DIR/ksu"
           cp -r "$DRIVER_DIR/kernelsu" "$SEC_DIR/ksu"
+
+          # Force security/ksu/Kbuild to use unconditional obj-y
           sed -i '/^obj-.*kernelsu\.o$/c\obj-y += kernelsu.o' "$SEC_DIR/ksu/Kbuild"
-          echo "✓ Kbuild in security/ksu/ forced to obj-y"
+          echo "✓ security/ksu/Kbuild forced to obj-y"
+
+          # Add ksu/ to security/Makefile if not already present
           if ! grep -q "obj-y.*ksu" "$SEC_DIR/Makefile" 2>/dev/null; then
             echo "obj-y += ksu/" >> "$SEC_DIR/Makefile"
             echo "✓ Added obj-y += ksu/ to security/Makefile"
           fi
+
+          # selinux/flask.h dependency is needed for both copies; add it
           echo '$(obj)/ksu/selinux/selinux.o: $(obj)/selinux/flask.h' >> "$SEC_DIR/Makefile"
           echo "✓ Added flask.h dependency for KSU selinux/selinux.o"
-          # Sterilize drivers/kernelsu/Kbuild so the directory entry exists
-          # but compiles nothing, preventing duplicate KSU symbols.
-          echo 'obj-y :=' > "$DRIVER_DIR/kernelsu/Kbuild"
-          echo "✓ Sterilized drivers/kernelsu/Kbuild (empty obj-y)"
+
+          # Sterilize drivers/kernelsu/Kbuild to prevent dual compilation.
+          # Kleaf requires the drivers/Makefile entry (from setup.sh), but
+          # we only want security/ksu/ to produce the actual objects.
+          # Delete obj- line, all kernelsu-objs lines, and ccflags-y lines.
+          sed -i \
+            -e '/^obj-\$(CONFIG_KSU) .*kernelsu\.o$/d' \
+            -e '/^kernelsu-objs [:+]=/d' \
+            -e '/^kernelsu-objs +=/d' \
+            -e '/^ccflags-y/d' \
+            "$DRIVER_DIR/kernelsu/Kbuild"
+          echo "✓ Sterilized drivers/kernelsu/Kbuild (security/ksu/ is primary)"
         else
           echo "⚠ security/ directory not found"
         fi
+
+        # ----------------------------------------------------------------
+        # Diagnostic: verify KSU locations exist and have valid Kbuild
+        # ----------------------------------------------------------------
+        echo ""
+        echo "=== KSU Kbuild verification ==="
+        for ksu_path in "$DRIVER_DIR/kernelsu" "${SEC_DIR:-NONE}/ksu"; do
+          kbuild="$ksu_path/Kbuild"
+          if [ -f "$kbuild" ]; then
+            entry=$(grep -c 'obj-' "$kbuild" || true)
+            total=$(wc -l < "$kbuild")
+            echo "  $kbuild: $total lines, $entry obj- entries"
+            echo "    └─ obj line: $(grep '^obj-' "$kbuild" | head -1)"
+          else
+            echo "  SKIP: $kbuild not present"
+          fi
+        done
+        for mfile in "$DRIVER_DIR/Makefile" "${SEC_DIR:-NONE}/Makefile"; do
+          if [ -f "$mfile" ] && grep -q "kernelsu\|ksu" "$mfile" 2>/dev/null; then
+            echo "  $mfile: $(grep -c 'kernelsu\|ksu' "$mfile") KSU references"
+          fi
+        done
+        echo "=== End KSU verification ==="
 
     - name: Commit all kernel source modifications
       shell: bash
       run: |
         set -euo pipefail
-        cd ${{ github.workspace }}/kernel
+        # Kleaf reads the git index of kernel/common/, not kernel/.repo/.
+        # All earlier actions (SUSFS, branding, kernel-fixes, etc.) and our
+        # KSU step write into common/.  Without a commit here, Kleaf sees
+        # the old tree and silently omits KSU/SUSFS from the build.
+        cd ${{ github.workspace }}/kernel/common
+        git config user.name "github-actions[bot]" 2>/dev/null || true
+        git config user.email "github-actions[bot]@users.noreply.github.com" 2>/dev/null || true
         git add -A
         git diff --cached --quiet && echo "Nothing to commit — tree is clean" || \
           git commit -m "feat: apply kernel modifications (KSU, SUSFS, patches)"
-        echo "All kernel source changes committed to git index"
+        echo "All kernel/common changes committed to git index"
 
     - name: Verify KSU inline hooks
       shell: bash
@@ -339,10 +382,18 @@ jobs:
       with:
         clear_stats: true
 
-    - name: Clear stale build caches
+    - name: Clear stale build caches (all)
       run: |
+        set -x
+        # Bazel disk cache
         rm -rf /home/runner/.cache/bazel/*
-        echo "🧹 Cleared Bazel disk cache for fresh build"
+        # Bazel execution root (output base)
+        rm -rf ~/.cache/bazel/_bazel_*
+        # ccache
+        ccache -C 2>/dev/null || true
+        # LTO thin cache
+        rm -rf /home/runner/.ld_cache/*
+        echo "All build caches cleared (Bazel, ccache, LTO)"
 
     - name: Build Kernel
       env:
@@ -354,6 +405,35 @@ jobs:
       uses: ./.github/actions/verify-kernel-config
       with:
         kernel_version: ${{ steps.parse.outputs.kernel_version }}
+
+    - name: Verify KSU compiled into vmlinux
+      shell: bash
+      run: |
+        set -euo pipefail
+        cd ${{ github.workspace }}/kernel
+        for variant in kernel_aarch64 out_oriole out_raven out_bluejay; do
+          dir="bazel-bin/common/$variant"
+          [ -d "$dir" ] || continue
+          echo "Checking $dir ..."
+          ksu_objs=$(find "$dir" -name '*kernelsu*' -o -name '*susfs*' 2>/dev/null | head -20)
+          if [ -n "$ksu_objs" ]; then
+            echo "  Found KSU/SUSFS objects:"
+            echo "$ksu_objs" | sed 's/^/    /'
+          else
+            echo "  No KSU/SUSFS objects in $dir"
+          fi
+          vmlinux="$dir/vmlinux"
+          if [ -f "$vmlinux" ]; then
+            echo "  Checking vmlinux for KSU+SUSFS symbols:"
+            for sym in ksu_handle_execveat ksu_handle_stat susfs_init; do
+              if nm "$vmlinux" 2>/dev/null | grep -q "$sym"; then
+                echo "    ✅ $sym resolved"
+              else
+                echo "    ❌ $sym MISSING"
+              fi
+            done
+          fi
+        done
 
     - name: Get Cache Stats
       uses: ./.github/actions/cache-stats
