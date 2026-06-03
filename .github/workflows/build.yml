@@ -210,14 +210,31 @@ jobs:
         fi
 
         # ----------------------------------------------------------------
-        # Step 2: KSU stays in drivers/kernelsu/ — the CONFIG_KSU=y
-        # defconfig entry causes the Kbuild system to descend into it
-        # automatically.  No extra copy needed.
+        # Step 2: Copy KSU source to security/ksu/ with unconditional
+        # obj-y.  The original drivers/Makefile entry
+        # (obj-$(CONFIG_KSU) += kernelsu/) is CONDITIONAL and Kleaf
+        # doesn't resolve it correctly, so we place a second copy in
+        # security/ and disable the drivers/ copy's Kbuild.
         # ----------------------------------------------------------------
-        if [ -d "$DRIVER_DIR/kernelsu" ]; then
-          echo "→ KSU source at $DRIVER_DIR/kernelsu/ (built via CONFIG_KSU)"
+        SEC_DIR="$DRIVER_DIR/../security"
+        if [ -d "$SEC_DIR" ] && [ -d "$DRIVER_DIR/kernelsu" ]; then
+          echo "→ Copying KSU source to $SEC_DIR/ksu/ ..."
+          rm -rf "$SEC_DIR/ksu"
+          cp -r "$DRIVER_DIR/kernelsu" "$SEC_DIR/ksu"
+          sed -i '/^obj-.*kernelsu\.o$/c\obj-y += kernelsu.o' "$SEC_DIR/ksu/Kbuild"
+          echo "✓ Kbuild in security/ksu/ forced to obj-y"
+          if ! grep -q "obj-y.*ksu" "$SEC_DIR/Makefile" 2>/dev/null; then
+            echo "obj-y += ksu/" >> "$SEC_DIR/Makefile"
+            echo "✓ Added obj-y += ksu/ to security/Makefile"
+          fi
+          # Explicit dep: KSU's selinux/selinux.o needs generated flask.h
+          echo '$(obj)/ksu/selinux/selinux.o: $(obj)/selinux/flask.h' >> "$SEC_DIR/Makefile"
+          echo "✓ Added flask.h dependency"
+          # Disable drivers/kernelsu/Kbuild so KSU isn't compiled twice
+          sed -i '/^obj-.*kernelsu\.o$/s/^/#/' "$DRIVER_DIR/kernelsu/Kbuild"
+          echo "✓ Disabled KSU compilation from drivers/kernelsu/"
         else
-          echo "⚠ KSU source directory not found at $DRIVER_DIR/kernelsu"
+          echo "⚠ security/ or drivers/kernelsu/ not found"
         fi
 
     - name: Commit all kernel source modifications
