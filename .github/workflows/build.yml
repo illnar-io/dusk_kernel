@@ -210,11 +210,14 @@ jobs:
         fi
 
         # ----------------------------------------------------------------
-        # Step 2: Copy KSU source to security/ksu/ with obj-y and remove
-        # from drivers/ to prevent dual compilation.
+        # Step 2: Copy KSU source to security/ksu/ with obj-y and sterilize
+        # the drivers/ copy to prevent dual compilation.  Kleaf requires
+        # the drivers/Makefile entry to exist (setup.sh added it) for the
+        # Kbuild chain to be processed; without it, Kleaf may skip the
+        # Makefile processing entirely for some kernel sublevels.
         # ----------------------------------------------------------------
         SEC_DIR="$DRIVER_DIR/../security"
-        if [ -d "$SEC_DIR" ] && [ -d "$DRIVER_DIR/kernelsu" ]; then
+        if [ -d "$SEC_DIR" ]; then
           echo "→ Copying KSU source to $SEC_DIR/ksu/ ..."
           rm -rf "$SEC_DIR/ksu"
           cp -r "$DRIVER_DIR/kernelsu" "$SEC_DIR/ksu"
@@ -226,11 +229,12 @@ jobs:
           fi
           echo '$(obj)/ksu/selinux/selinux.o: $(obj)/selinux/flask.h' >> "$SEC_DIR/Makefile"
           echo "✓ Added flask.h dependency for KSU selinux/selinux.o"
-          # Remove from drivers/ to prevent dual compilation
-          sed -i '/kernelsu/d' "$DRIVER_DIR/Makefile"
-          echo "✓ Removed kernelsu entry from drivers/Makefile"
+          # Sterilize drivers/kernelsu/Kbuild so the directory entry exists
+          # but compiles nothing, preventing duplicate KSU symbols.
+          echo 'obj-y :=' > "$DRIVER_DIR/kernelsu/Kbuild"
+          echo "✓ Sterilized drivers/kernelsu/Kbuild (empty obj-y)"
         else
-          echo "⚠ security/ or drivers/kernelsu/ not found"
+          echo "⚠ security/ directory not found"
         fi
 
     - name: Commit all kernel source modifications
