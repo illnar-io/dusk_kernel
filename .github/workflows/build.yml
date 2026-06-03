@@ -210,11 +210,8 @@ jobs:
         fi
 
         # ----------------------------------------------------------------
-        # Step 2: Copy KSU source to security/ksu/ with obj-y.
-        # security/selinux/ generates flask.h that KSU's selinux/selinux.c
-        # needs.  An explicit make dependency ensures flask.h exists before
-        # KSU compiles.  Remove the drivers/Makefile KSU entry to prevent
-        # dual compilation.  Keep Kconfig sourced for CONFIG_KSU validity.
+        # Step 2: Copy KSU source to security/ksu/ with obj-y and remove
+        # from drivers/ to prevent dual compilation.
         # ----------------------------------------------------------------
         SEC_DIR="$DRIVER_DIR/../security"
         if [ -d "$SEC_DIR" ] && [ -d "$DRIVER_DIR/kernelsu" ]; then
@@ -227,13 +224,11 @@ jobs:
             echo "obj-y += ksu/" >> "$SEC_DIR/Makefile"
             echo "✓ Added obj-y += ksu/ to security/Makefile"
           fi
-          # Add explicit dep: KSU's selinux/selinux.o needs generated flask.h
           echo '$(obj)/ksu/selinux/selinux.o: $(obj)/selinux/flask.h' >> "$SEC_DIR/Makefile"
           echo "✓ Added flask.h dependency for KSU selinux/selinux.o"
-          # Remove KSU from drivers/Makefile to prevent dual compilation.
-          # Keep Kconfig sourced so CONFIG_KSU is a valid symbol.
+          # Remove from drivers/ to prevent dual compilation
           sed -i '/kernelsu/d' "$DRIVER_DIR/Makefile"
-          echo "✓ Removed kernelsu entry from drivers/Makefile (Kconfig kept)"
+          echo "✓ Removed kernelsu entry from drivers/Makefile"
         else
           echo "⚠ security/ or drivers/kernelsu/ not found"
         fi
@@ -339,6 +334,11 @@ jobs:
       uses: ./.github/actions/cache-stats
       with:
         clear_stats: true
+
+    - name: Clear stale build caches
+      run: |
+        rm -rf /home/runner/.cache/bazel/*
+        echo "🧹 Cleared Bazel disk cache for fresh build"
 
     - name: Build Kernel
       env:
