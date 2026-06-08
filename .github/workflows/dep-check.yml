@@ -194,53 +194,73 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const inputs = {
+
+            function readFlag(stepId) {
+              try {
+                return fs.readFileSync(`/tmp/trigger-${stepId}`, 'utf8').trim() === 'true';
+              } catch { return false; }
+            }
+
+            // Legacy builds (main.yml): a12-5.10, a13-5.10, a13-5.15, a14-5.15
+            const legacyInputs = {
               release_type: 'Action', susfs: 'true', use_repo: 'true',
               root: 'KernelSU-Next', variant: 'Normal',
             };
+            const legacyMap = [
+              ['susfs_a12_5_10', 'build_a12_5_10'],
+              ['susfs_a13_5_10', 'build_a13_5_10'],
+              ['susfs_a13_5_15', 'build_a13_5_15'],
+              ['susfs_a14_5_15', 'build_a14_5_15'],
+            ];
+            let legacyTriggered = false;
+            for (const [stepId, input] of legacyMap) {
+              if (readFlag(stepId)) { legacyInputs[input] = 'true'; legacyTriggered = true; console.log(`  legacy ${input}=true`); }
+            }
+            if (legacyTriggered) {
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'main.yml',
+                ref: 'main',
+                inputs: legacyInputs,
+              });
+              console.log(`Dispatched main.yml: ${JSON.stringify(legacyInputs)}`);
+            } else {
+              console.log('No legacy build updates to dispatch');
+            }
 
-            const susfsMap = {
-              susfs_a12_5_10: 'build_a12_5_10', susfs_a13_5_10: 'build_a13_5_10',
-              susfs_a13_5_15: 'build_a13_5_15', susfs_a14_5_15: 'build_a14_5_15',
-              susfs_a14_6_1:  'build_a14_6_1',  susfs_a15_6_6:  'build_a15_6_6',
-              susfs_a16_6_12: 'build_a16_6_12',
+            // Tensor builds (pixel.yml): a14-6.1, a15-6.6, a16-6.12
+            const tensorInputs = {
+              release_type: 'Action', susfs: 'true', use_repo: 'true',
+              root: 'KernelSU-Next', variant: 'Normal',
             };
-
-            let triggered = false;
-
-            for (const [stepId, buildInput] of Object.entries(susfsMap)) {
-              try {
-                const flag = fs.readFileSync(`/tmp/trigger-${stepId}`, 'utf8').trim();
-                if (flag === 'true') {
-                  inputs[buildInput] = 'true';
-                  triggered = true;
-                  console.log(`  ${buildInput}=true`);
-                }
-              } catch {}
+            const tensorMap = [
+              ['susfs_a14_6_1',  'build_a14_6_1'],
+              ['susfs_a15_6_6',  'build_a15_6_6'],
+              ['susfs_a16_6_12', 'build_a16_6_12'],
+            ];
+            let tensorTriggered = false;
+            for (const [stepId, input] of tensorMap) {
+              if (readFlag(stepId)) { tensorInputs[input] = 'true'; tensorTriggered = true; console.log(`  tensor ${input}=true`); }
             }
-
-            try {
-              const ksuFlag = fs.readFileSync('/tmp/trigger-ksu', 'utf8').trim();
-              if (ksuFlag === 'true') {
-                inputs.build_a14_6_1 = 'true';
-                triggered = true;
-                console.log('  build_a14_6_1=true (KSU updated, primary)');
-              }
-            } catch {}
-
-            if (!triggered) {
-              console.log('No updates to dispatch to, skipping');
-              return;
+            // KSU-Next update also triggers a Tensor build (Pixel 6 = a14-6.1)
+            if (readFlag('ksu')) {
+              tensorInputs.build_a14_6_1 = 'true';
+              tensorTriggered = true;
+              console.log('  tensor build_a14_6_1=true (KSU updated, primary)');
             }
-
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'main.yml',
-              ref: 'main',
-              inputs,
-            });
-            console.log(`Dispatched main.yml: ${JSON.stringify(inputs)}`);
+            if (tensorTriggered) {
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'pixel.yml',
+                ref: 'main',
+                inputs: tensorInputs,
+              });
+              console.log(`Dispatched pixel.yml: ${JSON.stringify(tensorInputs)}`);
+            } else {
+              console.log('No Tensor build updates to dispatch');
+            }
 
       - name: Create or update issue
         if: steps.report.outputs.has_updates == 'true'
