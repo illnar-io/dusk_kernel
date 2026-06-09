@@ -54,37 +54,38 @@ runs:
       run: |
         set -euo pipefail
         VERSION="${{ inputs.kernel_version }}"
-        if [ "$VERSION" = "5.10" ]; then
-          echo "→ ntsync on 5.10: injecting compat defines via sed"
-          # lockdep_assert (added in 6.4), lockdep_is_held, LOCK_STATE_NOT_HELD,
-          # and schedule_hrtimeout_range_clock (added in 5.11) are not available
-          # on 5.10. Inject compat fallbacks after #include <linux/version.h>.
-          TARGET="drivers/misc/ntsync.c"
-          if grep -q "^#define LOCK_STATE_NOT_HELD" "$TARGET" 2>/dev/null; then
-            echo "  already patched"
+        TARGET="drivers/misc/ntsync.c"
+        if [ ! -f "$TARGET" ]; then
+          echo "⚠ ntsync.c not found, skipping compat"
+          exit 0
+        fi
+        if grep -q "^#define LOCK_STATE_NOT_HELD" "$TARGET" 2>/dev/null; then
+          echo "  compat already applied"
+          exit 0
+        fi
+        # lockdep_assert, lockdep_is_held, LOCK_STATE_NOT_HELD may be
+        # unavailable on older kernels. schedule_hrtimeout_range_clock
+        # (added in 5.11) is not exported for modules in some GKI 5.10
+        # and early 5.15 sublevels (< 5.15.74).
+        # Inject compat fallbacks; safe on any kernel.
+        printf '%b' '#ifndef LOCK_STATE_NOT_HELD\n#define LOCK_STATE_NOT_HELD 0\n#endif\n\n#ifndef lockdep_is_held\n#define lockdep_is_held(lock) (1)\n#endif\n\n#ifndef lockdep_assert\n#define lockdep_assert(cond) \\\n\tdo { \\\n\t\tWARN_ON_ONCE(!(cond)); \\\n\t} while (0)\n#endif\n' > /tmp/ntsync_compat.h
+        # schedule_hrtimeout_range_clock compat: on 5.10 / early 5.15 this
+        # function isn't exported for modules; on newer kernels the macro
+        # is harmless (drops clock param, using default clock).
+        if [ "$VERSION" = "5.10" ] || [ "$VERSION" = "5.15" ]; then
+          printf '%b' '\n#ifndef schedule_hrtimeout_range_clock\n#define schedule_hrtimeout_range_clock(expires, delta, mode, clock) \\\n\tschedule_hrtimeout_range(expires, delta, mode)\n#endif\n' >> /tmp/ntsync_compat.h
+        fi
+        sed -i '/^#include <linux\/version.h>$/r /tmp/ntsync_compat.h' "$TARGET"
+        echo "✅ Injected compat defines into ntsync.c"
+        # For kernel versions that have a dedicated compat patch, also apply it:
+        PATCH_SPECIFIC="${{ github.workspace }}/kernel_patches/ntsync/ntsync_compat_${VERSION}.patch"
+        if [ -f "$PATCH_SPECIFIC" ]; then
+          if patch -p1 --dry-run < "$PATCH_SPECIFIC" 2>/dev/null; then
+            patch -p1 < "$PATCH_SPECIFIC"
+            echo "✅ Applied $(basename $PATCH_SPECIFIC)"
           else
-            # Use printf with escape sequences to avoid actual tab chars in YAML
-            printf '%b' '#ifndef LOCK_STATE_NOT_HELD\n#define LOCK_STATE_NOT_HELD 0\n#endif\n\n#ifndef lockdep_is_held\n#define lockdep_is_held(lock) (1)\n#endif\n\n#ifndef lockdep_assert\n#define lockdep_assert(cond) \\\n\tdo { \\\n\t\tWARN_ON_ONCE(!(cond)); \\\n\t} while (0)\n#endif\n\n#ifndef schedule_hrtimeout_range_clock\n#define schedule_hrtimeout_range_clock(expires, delta, mode, clock) \\\n\tschedule_hrtimeout_range(expires, delta, mode)\n#endif\n' > /tmp/ntsync_compat.h
-            sed -i '/^#include <linux\/version.h>$/r /tmp/ntsync_compat.h' "$TARGET"
-            echo "✅ Injected 5.10 compat defines into ntsync.c"
+            echo "⚠ $(basename $PATCH_SPECIFIC) doesn't apply after inline compat, skipping"
           fi
-        else
-          PATCH_SPECIFIC="${{ github.workspace }}/kernel_patches/ntsync/ntsync_compat_${VERSION}.patch"
-          PATCH_GENERIC="${{ github.workspace }}/kernel_patches/ntsync/ntsync_compat.patch"
-          if [ -f "$PATCH_SPECIFIC" ]; then
-            PATCH="$PATCH_SPECIFIC"
-          elif [ -f "$PATCH_GENERIC" ]; then
-            PATCH="$PATCH_GENERIC"
-          else
-            echo "No compat patch found for ${VERSION}, skipping"
-            exit 0
-          fi
-          if ! patch -p1 --dry-run < "$PATCH" 2>/dev/null; then
-            echo "⚠ $(basename $PATCH) doesn't apply, skipping"
-            exit 0
-          fi
-          patch -p1 < "$PATCH"
-          echo "✅ Applied $(basename $PATCH)"
         fi
 
     - name: Configure NTSYNC in Kconfig and Makefile
