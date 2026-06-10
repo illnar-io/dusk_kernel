@@ -20,8 +20,14 @@ runs:
           "CONFIG_UTS_NS=y"
           "CONFIG_CGROUP_DEVICE=y"
           "CONFIG_CGROUP_PIDS=y"
+          "CONFIG_MEMCG=y"
+          "CONFIG_CGROUP_SCHED=y"
+          "CONFIG_CGROUP_FREEZER=y"
+          "CONFIG_CGROUP_CPUACCT=y"
           "CONFIG_USER_NS=y"
           "CONFIG_OVERLAY_FS=y"
+          "CONFIG_NET_NS=y"
+          "CONFIG_VETH=y"
           "CONFIG_KSU=y"
         )
 

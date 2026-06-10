@@ -35,7 +35,15 @@ runs:
       run: |
         set -euo pipefail
         PATCH_DIR="${{ github.workspace }}/kernel_patches/external_sources"
-        for PATCH in $(ls "$PATCH_DIR"/*cpuset*.patch "$PATCH_DIR"/*cgroup*.patch 2>/dev/null | sort -V); do
+        # Sort patches chronologically by Date: header to respect dependencies
+        SORTED_PATCHES=$(ls "$PATCH_DIR"/*cpuset*.patch "$PATCH_DIR"/*cgroup*.patch 2>/dev/null | while IFS= read -r f; do
+          if [ -f "$f" ]; then
+            d=$(grep -m1 '^Date:' "$f" 2>/dev/null | sed 's/^Date: //')
+            epoch=$(LC_ALL=C TZ=UTC date -d "$d" '+%Y%m%d%H%M%S' 2>/dev/null)
+            [ -n "$epoch" ] && echo "$epoch|$f" || echo "00000000000000|$f"
+          fi
+        done | sort -t'|' -k1 | cut -d'|' -f2-)
+        for PATCH in $SORTED_PATCHES; do
           echo "→ Applying: $(basename "$PATCH")"
           if patch -p1 --dry-run < "$PATCH" 2>/dev/null; then
             patch -p1 < "$PATCH"

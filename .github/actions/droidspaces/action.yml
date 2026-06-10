@@ -69,6 +69,11 @@ runs:
 
         # HW Access Support
         CONFIG_DEVTMPFS=y
+
+        # Network namespace isolation for containers
+        CONFIG_NET_NS=y
+        # Virtual Ethernet for container<->host networking
+        CONFIG_VETH=y
         EOF
 
         # Ensure IPC_NS and PID_NS are in the fragment for 6.1+ (where the

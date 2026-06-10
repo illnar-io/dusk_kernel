@@ -167,5 +167,19 @@ runs:
         add_cfg "CONFIG_SLAB_FREELIST_HARDENED=y"
         add_cfg "CONFIG_SHUFFLE_PAGE_ALLOCATOR=y"
 
+        # === Container/Droidspaces Support ===
+        # Top-level namespace gate
+        add_cfg "CONFIG_NAMESPACES=y"
+        # Network namespaces - required for container network isolation
+        add_cfg "CONFIG_NET_NS=y"
+        # Virtual Ethernet - required for container<->host veth pairs
+        add_cfg "CONFIG_VETH=y"
+        # Memory cgroup - required for container memory limits
+        add_cfg "CONFIG_MEMCG=y"
+        # CPU cgroup controllers - required for container CPU limits
+        add_cfg "CONFIG_CGROUP_SCHED=y"
+        add_cfg "CONFIG_CGROUP_FREEZER=y"
+        add_cfg "CONFIG_CGROUP_CPUACCT=y"
+
         # Note: disabling debug via =n is incompatible with GKI config checker
-        # when dependencies aren't met. These default to n in production builds.
+        # when dependencies aren't set. These default to n in production builds.
