@@ -18,32 +18,8 @@ runs:
           echo "::warning::External patches directory not found: $PATCH_DIR"
           exit 0
         fi
-        # Apply duchamp-* patches first
-        for PATCH in $(ls "$PATCH_DIR"/duchamp-*.patch 2>/dev/null | sort -V); do
-          echo "→ Applying: $(basename "$PATCH")"
-          if patch -p1 --dry-run < "$PATCH" 2>/dev/null; then
-            patch -p1 < "$PATCH"
-            echo "  ✅ $(basename "$PATCH") applied."
-          else
-            echo "  ⚠ $(basename "$PATCH") incompatible or already applied, skipping"
-          fi
-        done
-
-    - name: Apply cgroup/cpuset patches (guacamole_sickness)
-      shell: bash
-      working-directory: ${{ github.workspace }}/kernel/common
-      run: |
-        set -euo pipefail
-        PATCH_DIR="${{ github.workspace }}/kernel_patches/external_sources"
-        # Sort patches chronologically by Date: header to respect dependencies
-        SORTED_PATCHES=$(ls "$PATCH_DIR"/*cpuset*.patch "$PATCH_DIR"/*cgroup*.patch 2>/dev/null | while IFS= read -r f; do
-          if [ -f "$f" ]; then
-            d=$(grep -m1 '^Date:' "$f" 2>/dev/null | sed 's/^Date: //')
-            epoch=$(LC_ALL=C TZ=UTC date -d "$d" '+%Y%m%d%H%M%S' 2>/dev/null)
-            [ -n "$epoch" ] && echo "$epoch|$f" || echo "00000000000000|$f"
-          fi
-        done | sort -t'|' -k1 | cut -d'|' -f2-)
-        for PATCH in $SORTED_PATCHES; do
+        # Apply duchamp-* patches first (|| true prevents exit 2 when no files match)
+        for PATCH in $(ls "$PATCH_DIR"/duchamp-*.patch 2>/dev/null | sort -V || true); do
           echo "→ Applying: $(basename "$PATCH")"
           if patch -p1 --dry-run < "$PATCH" 2>/dev/null; then
             patch -p1 < "$PATCH"
@@ -61,7 +37,7 @@ runs:
         PATCH_DIR="${{ github.workspace }}/kernel_patches/external_sources"
         for PATCH in $(ls "$PATCH_DIR"/*pcie*exynos*.patch "$PATCH_DIR"/*pcie*dwc-whi*.patch \
                              "$PATCH_DIR"/*exynos*.patch "$PATCH_DIR"/*smfc*.patch \
-                             "$PATCH_DIR"/*GCMA*.patch "$PATCH_DIR"/*clocksource*.patch 2>/dev/null | sort -V); do
+                             "$PATCH_DIR"/*GCMA*.patch "$PATCH_DIR"/*clocksource*.patch 2>/dev/null | sort -V || true); do
           echo "→ Applying: $(basename "$PATCH")"
           if patch -p1 --dry-run < "$PATCH" 2>/dev/null; then
             patch -p1 < "$PATCH"
