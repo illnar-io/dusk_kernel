@@ -1,5 +1,5 @@
 name: "Apply External Source Patches"
-description: "Apply curated patches from GKI-Duchamp, guacamole_sickness, and Kirisakura_Raviole"
+description: "Apply curated patches from guacamole_sickness and Kirisakura_Raviole"
 inputs:
   kernel_version:
     description: "Kernel version (e.g., 6.1)"
@@ -8,27 +8,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Apply GKI-Duchamp patches (logspam, freeze timeout, memory optimizations)
-      shell: bash
-      working-directory: ${{ github.workspace }}/kernel/common
-      run: |
-        set -euo pipefail
-        PATCH_DIR="${{ github.workspace }}/kernel_patches/external_sources"
-        if [ ! -d "$PATCH_DIR" ]; then
-          echo "::warning::External patches directory not found: $PATCH_DIR"
-          exit 0
-        fi
-        # Apply duchamp-* patches first (|| true prevents exit 2 when no files match)
-        for PATCH in $(ls "$PATCH_DIR"/duchamp-*.patch 2>/dev/null | sort -V || true); do
-          echo "→ Applying: $(basename "$PATCH")"
-          if patch -p1 --dry-run < "$PATCH" 2>/dev/null; then
-            patch -p1 < "$PATCH"
-            echo "  ✅ $(basename "$PATCH") applied."
-          else
-            echo "  ⚠ $(basename "$PATCH") incompatible or already applied, skipping"
-          fi
-        done
-
     - name: Apply PCIe/SoC exynos patches (guacamole_sickness)
       shell: bash
       working-directory: ${{ github.workspace }}/kernel
