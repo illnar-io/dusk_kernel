@@ -46,32 +46,14 @@ runs:
         CONFIG_KALLSYMS=y
         CONFIG_KALLSYMS_ALL=y
 
-        # === Phase 1 — DUSK Kernel Report improvements ===
-
-        # MGLRU (Multi-Gen LRU) for better memory management on 6-8GB RAM
-        CONFIG_LRU_GEN=y
-        CONFIG_LRU_GEN_ENABLED=y
-
-        # ZRAM: module + lzo-rle default (faster decompression for Tensor A55)
-        CONFIG_ZRAM=m
-
-        # RCU_LAZY: activate by default (was DEFAULT_OFF)
-        # CONFIG_RCU_LAZY_DEFAULT_OFF is not set
-
-        # EAS uclamp tuning for better task placement
-        CONFIG_UCLAMP_TASK=y
-
-        # F2FS GC tuning (aggressive on charge) — Phase2 DUSK Report
-        # Note: CONFIG_F2FS_GC_RECOVERY doesn't exist - it's SBI_IS_RECOVERED runtime flag
-        # Valid F2FS config options for 6.1:
-        CONFIG_F2FS_FS=y
-        CONFIG_F2FS_FS_COMPRESSION=y
-        CONFIG_F2FS_FS_LZ4=y
-        CONFIG_F2FS_FS_LZ4HC=y
-        CONFIG_F2FS_FS_ZSTD=y
-        CONFIG_F2FS_FS_LZO=y
-        CONFIG_F2FS_FS_LZORLE=y
-        CONFIG_F2FS_UNFAIR_RWSEM=y
+        # Container/Droidspaces Support
+        CONFIG_NAMESPACES=y
+        CONFIG_NET_NS=y
+        CONFIG_VETH=y
+        CONFIG_MEMCG=y
+        CONFIG_CGROUP_SCHED=y
+        CONFIG_CGROUP_FREEZER=y
+        CONFIG_CGROUP_CPUACCT=y
         EOF
 
         # User Namespaces (required for Droidspaces, containers, and ntsync)
@@ -82,104 +64,3 @@ runs:
         else
             echo "  ⚠ skipping CONFIG_USER_NS (not compatible on kernel 5.10)" >&2
         fi
-
-        # ZSMALLOC: explicitly set module mode on 5.10 so zram can find
-        # the zs_* symbols.  On 6.x the defconfig already sets ZSMALLOC=m
-        # and forcing it to y conflicts with Kleaf's strict config checker.
-        if [ "${{ inputs.kernel_version }}" == "5.10" ]; then
-            if config_exists "ZSMALLOC"; then
-                echo 'CONFIG_ZSMALLOC=m' >> "$FRAGMENT"
-                echo "  → ZSMALLOC=m (zsmalloc module for zram)"
-            fi
-        fi
-
-        # ZRAM default compression algorithm - guard by Kconfig existence
-        if grep -rq "config ZRAM_DEF_COMP_LZORLE\b" "$KERNEL_COMMON" 2>/dev/null; then
-            echo '# CONFIG_ZRAM_DEF_COMP_ZSTD is not set' >> "$FRAGMENT"
-            echo 'CONFIG_ZRAM_DEF_COMP_LZORLE=y' >> "$FRAGMENT"
-            echo 'CONFIG_ZRAM_DEF_COMP="lzo-rle"' >> "$FRAGMENT"
-            # ZRAM_DEF_COMP_LZORLE depends on CRYPTO_LZO; keep ZSTD_COMPRESS=y for F2FS
-            echo 'CONFIG_ZSTD_COMPRESS=y' >> "$FRAGMENT"
-        elif grep -rq "config ZRAM_DEF_COMP\b" "$KERNEL_COMMON" 2>/dev/null; then
-            CONFIG_ZRAM_DEF_COMP=$(grep -rA5 "config ZRAM_DEF_COMP\b" "$KERNEL_COMMON" --include="Kconfig" 2>/dev/null)
-            if echo "$CONFIG_ZRAM_DEF_COMP" | grep -q "string"; then
-                echo 'CONFIG_ZRAM_DEF_COMP="lzo-rle"' >> "$FRAGMENT"
-            fi
-        fi
-
-        # Trim unused symbols - disable only if GKI allows it.
-        # On a16-6.12 the Kconfig defaults TRIM_UNUSED_KSYMS to y regardless
-        # of the defconfig text; disabling it would trip the Bazel config
-        # checker.
-        if [ "${{ inputs.kernel_version }}" != "6.12" ]; then
-          if ! grep -q "CONFIG_TRIM_UNUSED_KSYMS=y" "$KERNEL_COMMON/arch/arm64/configs/gki_defconfig" 2>/dev/null; then
-            echo '# CONFIG_TRIM_UNUSED_KSYMS is not set' >> "$FRAGMENT"
-          fi
-        fi
-
-        # === Duchamp Performance Tuning ===
-        # Add with Kconfig existence checks
-        add_cfg "CONFIG_HZ_300=y"
-        add_cfg "CONFIG_HZ=300"
-        add_cfg "CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y"
-        add_cfg "CONFIG_CPU_FREQ_GOV_ONDEMAND=y"
-        add_cfg "CONFIG_FRAME_WARN=0"
-        add_cfg "CONFIG_OPTIMIZE_INLINING=y"
-        add_cfg "CONFIG_ZRAM_WRITEBACK=y"
-        add_cfg "CONFIG_ZRAM_MEMORY_TRACKING=y"
-        add_cfg "CONFIG_MQ_IOSCHED_DEADLINE=y"
-        add_cfg "CONFIG_NET_SCH_FQ=y"
-        add_cfg "CONFIG_TCP_CONG_ADVANCED=y"
-        add_cfg "CONFIG_DEFAULT_BBR=y"
-        add_cfg "CONFIG_TCP_CONG_BBR=y"
-        add_cfg "CONFIG_TCP_CONG_WESTWOOD=y"
-        add_cfg "CONFIG_IP_NF_TARGET_TTL=y"
-        add_cfg "CONFIG_IP_SET=y"
-        add_cfg "CONFIG_IP_SET_MAX=65534"
-        add_cfg "CONFIG_IP_SET_BITMAP_IP=y"
-        add_cfg "CONFIG_IP_SET_BITMAP_IPMAC=y"
-        add_cfg "CONFIG_IP_SET_BITMAP_PORT=y"
-        add_cfg "CONFIG_IP_SET_HASH_IP=y"
-        add_cfg "CONFIG_IP_SET_HASH_IPMARK=y"
-        add_cfg "CONFIG_IP_SET_HASH_IPPORT=y"
-        add_cfg "CONFIG_IP_SET_HASH_IPPORTIP=y"
-        add_cfg "CONFIG_IP_SET_HASH_IPPORTNET=y"
-        add_cfg "CONFIG_IP_SET_HASH_IPMAC=y"
-        add_cfg "CONFIG_IP_SET_HASH_MAC=y"
-        add_cfg "CONFIG_IP_SET_HASH_NETPORTNET=y"
-        add_cfg "CONFIG_IP_SET_HASH_NET=y"
-        add_cfg "CONFIG_IP_SET_HASH_NETNET=y"
-        add_cfg "CONFIG_IP_SET_HASH_NETPORT=y"
-        add_cfg "CONFIG_IP_SET_HASH_NETIFACE=y"
-        add_cfg "CONFIG_IP_SET_LIST_SET=y"
-        add_cfg "CONFIG_NETFILTER_XT_SET=y"
-        add_cfg "CONFIG_IP6_NF_NAT=y"
-        add_cfg "CONFIG_IP6_NF_TARGET_MASQUERADE=y"
-        add_cfg "CONFIG_NETFILTER_XT_MATCH_ADDRTYPE=y"
-        add_cfg "CONFIG_IP6_NF_TARGET_HL=y"
-        add_cfg "CONFIG_IP6_NF_MATCH_HL=y"
-
-        # === Kirisakura_Raviole inspired configs ===
-        add_cfg "CONFIG_RT_SOFTINT_OPTIMIZATION=y"
-        add_cfg "CONFIG_USERFAULTFD=y"
-        add_cfg "CONFIG_SCHED_MC=y"
-        add_cfg "CONFIG_SLAB_FREELIST_RANDOM=y"
-        add_cfg "CONFIG_SLAB_FREELIST_HARDENED=y"
-        add_cfg "CONFIG_SHUFFLE_PAGE_ALLOCATOR=y"
-
-        # === Container/Droidspaces Support ===
-        # Top-level namespace gate
-        add_cfg "CONFIG_NAMESPACES=y"
-        # Network namespaces - required for container network isolation
-        add_cfg "CONFIG_NET_NS=y"
-        # Virtual Ethernet - required for container<->host veth pairs
-        add_cfg "CONFIG_VETH=y"
-        # Memory cgroup - required for container memory limits
-        add_cfg "CONFIG_MEMCG=y"
-        # CPU cgroup controllers - required for container CPU limits
-        add_cfg "CONFIG_CGROUP_SCHED=y"
-        add_cfg "CONFIG_CGROUP_FREEZER=y"
-        add_cfg "CONFIG_CGROUP_CPUACCT=y"
-
-        # Note: disabling debug via =n is incompatible with GKI config checker
-        # when dependencies aren't set. These default to n in production builds.
