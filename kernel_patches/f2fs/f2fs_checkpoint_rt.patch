@@ -1,13 +1,16 @@
 --- a/fs/f2fs/checkpoint.c
 +++ b/fs/f2fs/checkpoint.c
-@@ -2124,6 +2124,11 @@ int f2fs_start_ckpt_thread(struct f2fs_sb_info *sbi)
+@@ -2124,6 +2124,14 @@ int f2fs_start_ckpt_thread(struct f2fs_sb_info *sbi)
  	set_task_ioprio(cprc->f2fs_issue_ckpt, cprc->ckpt_thread_ioprio);
  	set_user_nice(cprc->f2fs_issue_ckpt,
  			PRIO_TO_NICE(sbi->critical_task_priority));
 +
-+	// Set checkpoint thread to realtime scheduling to avoid stalls during heavy I/O
-+	struct sched_param param = { .sched_priority = 80 };
-+	sched_setscheduler(cprc->f2fs_issue_ckpt, SCHED_FIFO, &param);
-+
++	/*
++	 * Use SCHED_OTHER with the nice value already set above.
++	 * SCHED_FIFO on an I/O-bound thread causes priority inversion:
++	 * the RT thread blocks on disk I/O, preempts completion handlers,
++	 * and starves system_server under container load → watchdog reboot.
++	 * The existing ioprio + nice boost is sufficient for checkpoint.
++	 */
  	return 0;
  }
