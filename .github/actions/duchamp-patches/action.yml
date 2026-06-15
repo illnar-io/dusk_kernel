@@ -11,44 +11,41 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Guard — Skip Duchamp F2FS patches on Pixel 6 (kernel 6.1)
+    - name: Apply Selective Patches (force_tcp_nodelay + F2FS GC) — Pixel 6 skip
       shell: bash
+      working-directory: ${{ github.workspace }}/kernel/common
       run: |
+        set -euo pipefail
+
         if [ "${{ inputs.kernel_version }}" = "6.1" ]; then
           echo "Skipping Duchamp F2FS patches for kernel 6.1 (Pixel 6)."
           echo "F2FS GC tuning (reduce_gc_thread_sleep, enlarge_min_fsync_blocks,"
           echo "reduce_congestion) causes I/O stalls during container creation,"
           echo "triggering watchdog reboot. WildKernels upstream works without them."
-          exit 0
+        else
+          BASE_URL="https://raw.githubusercontent.com/ahmed-alnassif/GKI-Duchamp/master/kernel-patches/common"
+          PATCHES=(
+            "reduce_gc_thread_sleep_time.patch"
+            "f2fs_enlarge_min_fsync_blocks.patch"
+            "f2fs_reduce_congestion.patch"
+          )
+          TMPDIR=$(mktemp -d)
+          for PATCH in "${PATCHES[@]}"; do
+            echo "→ Downloading ${PATCH}..."
+            if ! curl -sLf "${BASE_URL}/${PATCH}" -o "${TMPDIR}/${PATCH}"; then
+              echo "⚠ Failed to download ${PATCH}, skipping"
+              continue
+            fi
+            echo "  Applying..."
+            if ! patch -p1 --dry-run < "${TMPDIR}/${PATCH}" 2>/dev/null; then
+              echo "  ⚠ ${PATCH} already applied upstream, skipping"
+            else
+              patch -p1 < "${TMPDIR}/${PATCH}"
+              echo "  ✅ Applied"
+            fi
+          done
+          rm -rf "$TMPDIR"
         fi
-
-    - name: Apply Selective Patches (force_tcp_nodelay + F2FS GC)
-      shell: bash
-      working-directory: ${{ github.workspace }}/kernel/common
-      run: |
-        set -euo pipefail
-        BASE_URL="https://raw.githubusercontent.com/ahmed-alnassif/GKI-Duchamp/master/kernel-patches/common"
-        PATCHES=(
-          "reduce_gc_thread_sleep_time.patch"
-          "f2fs_enlarge_min_fsync_blocks.patch"
-          "f2fs_reduce_congestion.patch"
-        )
-        TMPDIR=$(mktemp -d)
-        for PATCH in "${PATCHES[@]}"; do
-          echo "→ Downloading ${PATCH}..."
-          if ! curl -sLf "${BASE_URL}/${PATCH}" -o "${TMPDIR}/${PATCH}"; then
-            echo "⚠ Failed to download ${PATCH}, skipping"
-            continue
-          fi
-          echo "  Applying..."
-          if ! patch -p1 --dry-run < "${TMPDIR}/${PATCH}" 2>/dev/null; then
-            echo "  ⚠ ${PATCH} already applied upstream, skipping"
-          else
-            patch -p1 < "${TMPDIR}/${PATCH}"
-            echo "  ✅ Applied"
-          fi
-        done
-        rm -rf "$TMPDIR"
 
     - name: Skip Remaining Duchamp Patches
       shell: bash

@@ -8,32 +8,47 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Guard — Skip Tensor-specific patches on Pixel 6 (kernel 6.1)
-      shell: bash
-      run: |
-        if [ "${{ inputs.kernel_version }}" = "6.1" ]; then
-          echo "Skipping Tensor external patches for kernel 6.1 (Pixel 6)."
-          echo "These patches (PCIe dwc-whi, clocksource MCT priority, SMFC,"
-          echo "GCMA, Exynos ACME) were introduced in commit 5c71f22 and"
-          echo "cause watchdog reboot when Droidspaces creates a container."
-          echo "WildKernels upstream (r4) works without them. See AIO-REJ/.trace"
-          exit 0
-        fi
-
     - name: Apply PCIe/SoC exynos patches (guacamole_sickness)
       shell: bash
       working-directory: ${{ github.workspace }}/kernel
       run: |
         set -euo pipefail
         PATCH_DIR="${{ github.workspace }}/kernel_patches/external_sources"
+
+        # Patches known to cause watchdog reboot when Droidspaces creates a container
+        # on Pixel 6 (Tensor GS101). Analysis in commit message of the guard commit.
+        #   582e4e78f0ec — PCIe dwc-whi: Import from Zuma (G3→G1 backport, 2912 lines,
+        #                   rewrites perst/PM/PHY — container net ops trigger PCIe events)
+        #   f0d922fbfa9a — clocksource: prioritise ARM arch timer over Exynos MCT
+        #                   (breaks deep idle wakeup on GS101 — any timeout-based op hangs)
+        #   fc0ffe7473d5 — PCIe: never enable clocks when reading/writing registers
+        #                   (removes clock gating — register reads while unclocked = hang)
+        SKIP_PATCHES=(
+          "582e4e78f0ec"
+          "f0d922fbfa9a"
+          "fc0ffe7473d5"
+        )
+
         for PATCH in $(ls "$PATCH_DIR"/*pcie*exynos*.patch "$PATCH_DIR"/*pcie*dwc-whi*.patch \
                              "$PATCH_DIR"/*exynos*.patch "$PATCH_DIR"/*smfc*.patch \
                              "$PATCH_DIR"/*GCMA*.patch "$PATCH_DIR"/*clocksource*.patch 2>/dev/null | sort -V || true); do
-          echo "→ Applying: $(basename "$PATCH")"
+          PATCH_BASENAME=$(basename "$PATCH")
+
+          SKIP=false
+          for SKIP_PREFIX in "${SKIP_PATCHES[@]}"; do
+            if [[ "$PATCH_BASENAME" == "${SKIP_PREFIX}"* ]]; then
+              echo "→ SKIPPING: $PATCH_BASENAME (causes container watchdog reboot on Pixel 6)"
+              SKIP=true
+              break
+            fi
+          done
+          $SKIP && continue
+
+          echo "→ Applying: $PATCH_BASENAME"
           if patch -p1 --dry-run < "$PATCH" 2>/dev/null; then
             patch -p1 < "$PATCH"
-            echo "  ✅ $(basename "$PATCH") applied."
+            echo "  ✅ $PATCH_BASENAME applied."
           else
-            echo "  ⚠ $(basename "$PATCH") incompatible or already applied, skipping"
+            echo "  ⚠ $PATCH_BASENAME incompatible or already applied, skipping"
           fi
         done
