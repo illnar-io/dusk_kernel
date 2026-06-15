@@ -11,6 +11,17 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Guard — Skip Duchamp F2FS patches on Pixel 6 (kernel 6.1)
+      shell: bash
+      run: |
+        if [ "${{ inputs.kernel_version }}" = "6.1" ]; then
+          echo "Skipping Duchamp F2FS patches for kernel 6.1 (Pixel 6)."
+          echo "F2FS GC tuning (reduce_gc_thread_sleep, enlarge_min_fsync_blocks,"
+          echo "reduce_congestion) causes I/O stalls during container creation,"
+          echo "triggering watchdog reboot. WildKernels upstream works without them."
+          exit 0
+        fi
+
     - name: Apply Selective Patches (force_tcp_nodelay + F2FS GC)
       shell: bash
       working-directory: ${{ github.workspace }}/kernel/common

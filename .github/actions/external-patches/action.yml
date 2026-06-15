@@ -8,6 +8,18 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Guard — Skip Tensor-specific patches on Pixel 6 (kernel 6.1)
+      shell: bash
+      run: |
+        if [ "${{ inputs.kernel_version }}" = "6.1" ]; then
+          echo "Skipping Tensor external patches for kernel 6.1 (Pixel 6)."
+          echo "These patches (PCIe dwc-whi, clocksource MCT priority, SMFC,"
+          echo "GCMA, Exynos ACME) were introduced in commit 5c71f22 and"
+          echo "cause watchdog reboot when Droidspaces creates a container."
+          echo "WildKernels upstream (r4) works without them. See AIO-REJ/.trace"
+          exit 0
+        fi
+
     - name: Apply PCIe/SoC exynos patches (guacamole_sickness)
       shell: bash
       working-directory: ${{ github.workspace }}/kernel
