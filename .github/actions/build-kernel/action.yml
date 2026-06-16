@@ -40,16 +40,20 @@ runs:
         done
         # On legacy builds (5.10, 5.15) the build system checks
         # common/android/gki_aarch64_modules against the actual module list
-        # after compilation.  If our fragment adds extra modules (zram, ntsync,
-        # zsmalloc) this check fails.  Update the file upfront so it reflects
-        # what we will build.
+        # after compilation.  If our fragment adds extra modules the check
+        # fails.  Update the file upfront so it reflects what we will build.
+        #
+        # Only pre-populate ntsync.ko — the only module we explicitly enable
+        # via the config fragment that the GKI defconfig won't already have
+        # listed.  ZRAM/ZSMALLOC come from the GKI defconfig itself; if they
+        # are built-in (=y) on a given kernel version (e.g. 5.10), adding
+        # them here would produce a false mismatch.
         if [ -f "common/android/gki_aarch64_modules" ]; then
-          for mod in mm/zsmalloc.ko drivers/block/zram/zram.ko drivers/misc/ntsync.ko; do
+          for mod in drivers/misc/ntsync.ko; do
             if ! grep -qxF "$mod" "common/android/gki_aarch64_modules" 2>/dev/null; then
               echo "$mod" >> "common/android/gki_aarch64_modules"
             fi
           done
-          echo "✓ Updated common/android/gki_aarch64_modules"
         fi
 
         # Use fewer parallel jobs than $(nproc) to avoid OOM during LTO.
