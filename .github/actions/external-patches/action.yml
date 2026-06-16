@@ -15,18 +15,18 @@ runs:
         set -euo pipefail
         PATCH_DIR="${{ github.workspace }}/kernel_patches/external_sources"
 
-        # Patches known to cause watchdog reboot when Droidspaces creates a container
-        # on Pixel 6 (Tensor GS101). The kernel panics in the WiFi driver
+        # Patches confirmed to cause watchdog reboot when Droidspaces creates a
+        # container on Pixel 6 (Tensor GS101). The kernel panics in the WiFi driver
         # (bcmdhd4389, connected via PCIe) with a page fault on MMIO access:
         #   KP: Oops: comm:systemd-network PC:dhd_ioctl_entry_local+0x4c
         #   nl80211_dump_station -> ... -> dhd_ioctl_entry_local -> page fault
         #
-        # Suspect patches grouped by risk:
-        #   582e4e78f0ec — Zuma PCIe import (EXTREME, massive G3->G1 backport)
+        # Confirmed culprits:
+        #   582e4e78f0ec — PCIe dwc-whi Zuma import (EXTREME, 2912-line G3->G1)
         #   f0d922fbfa9a — Clocksource MCT priority (HIGH, breaks deep idle wakeup)
-        #   fc0ffe7473d5 — PCIe no-clock reg access (HIGH, hangs bus)
-        #   67fe1061b2c2 — PCIe L1SS memoize (MEDIUM, link power state errors
-        #                   can make WiFi BAR inaccessible -> page fault)
+        #   fc0ffe7473d5 — PCIe no-clock reg access (HIGH, register reads hang bus)
+        #   67fe1061b2c2 — PCIe L1SS memoize (confirmed: broken L1 power state
+        #                   transitions make WiFi BAR inaccessible -> page fault)
         # The other 3 PCIe patches (IRQ wake, MSI affinity, logspam) are safe
         # for runtime use and kept.
         SKIP_PATCHES=(
