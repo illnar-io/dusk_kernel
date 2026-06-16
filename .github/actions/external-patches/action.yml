@@ -17,21 +17,23 @@ runs:
 
         # Patches known to cause watchdog reboot when Droidspaces creates a container
         # on Pixel 6 (Tensor GS101). The kernel panics in the WiFi driver
-        # (bcmdhd4389, connected via PCIe) — all PCIe Exynos patches are suspect
-        # and removed for 6.1. Only non-PCIe patches (SMFC, Exynos ACME, GCMA)
-        # are kept.
+        # (bcmdhd4389, connected via PCIe) with a page fault on MMIO access:
+        #   KP: Oops: comm:systemd-network PC:dhd_ioctl_entry_local+0x4c
+        #   nl80211_dump_station -> ... -> dhd_ioctl_entry_local -> page fault
         #
-        # Last panic: KP: Oops: comm:systemd-network PC:dhd_ioctl_entry_local+0x4c
-        #   nl80211_dump_station → wl_cfg80211_dump_station → wldev_ioctl_get →
-        #   dhd_ioctl_entry_local → page fault in kernel mode (MMIO over PCIe)
+        # Suspect patches grouped by risk:
+        #   582e4e78f0ec — Zuma PCIe import (EXTREME, massive G3->G1 backport)
+        #   f0d922fbfa9a — Clocksource MCT priority (HIGH, breaks deep idle wakeup)
+        #   fc0ffe7473d5 — PCIe no-clock reg access (HIGH, hangs bus)
+        #   67fe1061b2c2 — PCIe L1SS memoize (MEDIUM, link power state errors
+        #                   can make WiFi BAR inaccessible -> page fault)
+        # The other 3 PCIe patches (IRQ wake, MSI affinity, logspam) are safe
+        # for runtime use and kept.
         SKIP_PATCHES=(
-          "582e4e78f0ec"  # PCIe dwc-whi: Zuma import (G3→G1, rewrites PHY/PM)
-          "f0d922fbfa9a"  # Clocksource MCT: arch timer priority (breaks deep idle)
-          "fc0ffe7473d5"  # PCIe: never enable clocks around reg access
-          "2616c49be7ba"  # PCIe: IRQ wake helper change
-          "65faa44b59f7"  # PCIe: MSI affinity (removed ch_num guard)
-          "67fe1061b2c2"  # PCIe: L1SS memoize (cached capability offset)
-          "c09739bbd6a7"  # PCIe: reduce logspam
+          "582e4e78f0ec"
+          "f0d922fbfa9a"
+          "fc0ffe7473d5"
+          "67fe1061b2c2"
         )
 
         for PATCH in $(ls "$PATCH_DIR"/*pcie*exynos*.patch "$PATCH_DIR"/*pcie*dwc-whi*.patch \
