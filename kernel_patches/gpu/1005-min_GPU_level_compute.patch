@@ -1,0 +1,32 @@
+From 5a06157180d37606917e7100bfcfbd6341870758 Mon Sep 17 00:00:00 2001
+From: Kevin DuBois <kevindubois@google.com>
+Date: Mon, 8 Feb 2021 16:07:54 -0800
+Subject: [PATCH] arm64/dts: gs101: add min GPU level for compute
+
+Sets minimum DVFS OPP for GPU when compute workload is detected.
+
+Bug: 178234323
+Test: tflite does up gpu frequency.
+Test: UI does not up gpu frequency.
+Change-Id: Ie40dffc0483588fe178414e1522208c4ea49f164
+Signed-off-by: Kevin DuBois <kevindubois@google.com>
+---
+ arch/arm64/boot/dts/google/gs101-gpu.dtsi | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/google/gs101-gpu.dtsi b/arch/arm64/boot/dts/google/gs101-gpu.dtsi
+index 80ef529b98039..778f49545b349 100644
+--- a/arch/arm64/boot/dts/google/gs101-gpu.dtsi
++++ b/arch/arm64/boot/dts/google/gs101-gpu.dtsi
+@@ -76,6 +76,11 @@
+ 			302000  151000      0     60      1        0        0        0       0     0
+ 		>;
+ 
++		/* Designate the minimum level for when compute work is detected. If this value
++		   falls between two dvfs levels, the higher level will be used as the minimum
++		   level.*/
++		gpu_dvfs_compute_min = <450000>;
++
+ 		/* QOS */
+ 		gpu_dvfs_qos_bts_scenario = "g3d_performance";
+ 		gpu_dvfs_qos_bts_threshold = <400000>;

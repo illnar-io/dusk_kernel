@@ -1,0 +1,32 @@
+name: "Apply GPU/Mali Patches"
+description: "Apply Mali-G78 performance, power, and thermal patches from Google Tensor kernels"
+inputs:
+  kernel_version:
+    description: "Kernel version (e.g., 6.1)"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Apply GPU DTS and driver patches
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel/common
+      run: |
+        set -euo pipefail
+        PATCH_DIR="${{ github.workspace }}/kernel_patches/gpu"
+
+        if [ ! -d "$PATCH_DIR" ]; then
+          echo "No kernel_patches/gpu directory, skipping GPU patches."
+          exit 0
+        fi
+
+        for PATCH in $(ls "$PATCH_DIR"/*.patch 2>/dev/null | sort -V || true); do
+          PATCH_BASENAME=$(basename "$PATCH")
+          echo "→ Applying: $PATCH_BASENAME"
+          if patch -p1 --dry-run < "$PATCH" 2>/dev/null; then
+            patch -p1 < "$PATCH"
+            echo "  ✅ $PATCH_BASENAME applied."
+          else
+            echo "  ⚠ $PATCH_BASENAME incompatible or already applied, skipping"
+          fi
+        done

@@ -1,0 +1,39 @@
+From 6e2f3d912b9fba49f57d2b6f8bc0adcfe4f6ff2b Mon Sep 17 00:00:00 2001
+From: Sidath Senanayake <sidaths@google.com>
+Date: Tue, 29 Jun 2021 11:34:28 +0100
+Subject: [PATCH] arm64/dts: gs101: Track both GPU power domains
+
+Explicitly manage both pd-g3d and pd-embedded-g3d in the
+GPU driver to allow for finer control of GPU power states.
+
+Increase the autosuspend delay since it now only affects
+pd-g3d and is effectively how long GPU state is retained
+before pd-g3d is powered down and subsequent GPU power
+ups will require GPU state to be regenerated.
+
+Bug: 191136938
+Signed-off-by: Sidath Senanayake <sidaths@google.com>
+Change-Id: I1e767a4e3d6aefd70a9f3cbe731e046a8d819173
+---
+ arch/arm64/boot/dts/google/gs101-gpu.dtsi | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/google/gs101-gpu.dtsi b/arch/arm64/boot/dts/google/gs101-gpu.dtsi
+index daf6ab6a3a086..055ad4e7e2328 100644
+--- a/arch/arm64/boot/dts/google/gs101-gpu.dtsi
++++ b/arch/arm64/boot/dts/google/gs101-gpu.dtsi
+@@ -26,11 +26,12 @@
+ 		interrupt-names = "JOB", "MMU", "GPU";
+ 
+ 		/* Power */
+-		power-domains = <&pd_embedded_g3d>;
++		power-domains = <&pd_g3d>, <&pd_embedded_g3d>;
++		power-domain-names = "top", "cores";
+ 		g3d_genpd_name = "pd-embedded_g3d";
+ 		gpu_pmu_status_reg_offset = <0x2004>;
+ 		gpu_pmu_status_local_pwr_mask = <0x1>; /*0x1 << 0*/
+-		gpu_pm_autosuspend_delay = <50>;
++		gpu_pm_autosuspend_delay = <500>;
+ 		power_policy = "adaptive";
+ 
+ 		/* Memory */

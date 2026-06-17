@@ -1,0 +1,28 @@
+From f1ac8951e41913ccf9ed7437a9d0e15e7fd7b759 Mon Sep 17 00:00:00 2001
+From: Varad Gautam <varadgautam@google.com>
+Date: Mon, 7 Nov 2022 15:28:06 +0000
+Subject: [PATCH] dts: gs201: gpu: Set system-coherency to ACE_LITE
+
+Allow the GPU to be configured for IO Coherency.
+
+Note: This was initially added in If2e3a7e2 and reverted in Ifbd1dcbb1.
+Test: 10000 hours SST (b/271438225#comment17)
+Bug: 200555454
+Change-Id: I5901de8209f26e7860060d8e3f5068fb237708e7
+Signed-off-by: Varad Gautam <varadgautam@google.com>
+---
+ arch/arm64/boot/dts/google/gs201-gpu.dtsi | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm64/boot/dts/google/gs201-gpu.dtsi b/arch/arm64/boot/dts/google/gs201-gpu.dtsi
+index b2f98d42e13f..9589f175e8f5 100644
+--- a/arch/arm64/boot/dts/google/gs201-gpu.dtsi
++++ b/arch/arm64/boot/dts/google/gs201-gpu.dtsi
+@@ -64,6 +64,7 @@
+ 
+ 		/* Memory */
+ 		physical-memory-group-manager = <&mali_mgm>;
++		system-coherency = <0>;
+ 
+ 		/* Priority control */
+ 		/*priority-control-manager = <&mali_pcm>;*/
