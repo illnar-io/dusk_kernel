@@ -166,11 +166,6 @@ jobs:
       with:
         kernel_version: ${{ steps.parse.outputs.kernel_version }}
 
-    - name: GPU/Mali Patches (Tensor)
-      uses: ./.github/actions/gpu-patches
-      with:
-        kernel_version: ${{ steps.parse.outputs.kernel_version }}
-
     - name: Apply Module Check Bypass
       if: ${{ inputs.variant == 'Bypass' }}
       uses: ./.github/actions/module-check-bypass
