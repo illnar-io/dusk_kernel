@@ -39,7 +39,7 @@ runs:
           SUSFS_COMMIT="667368cf274311a62971671035738b154be1c062"
         fi
         if [ "${{ inputs.kernel_version }}" = "6.1" ]; then
-          SUSFS_COMMIT="9bf72ec2c83d40f194b936cabbc64ce342e005bf"
+          SUSFS_COMMIT="ab4c23cfc7cb26821abb7a9d2071206713c070fe"
         fi
         if [ "${{ inputs.kernel_version }}" = "6.6" ]; then
           SUSFS_COMMIT="5009b9edee98fbe66b1a3cb22c603690d81b7817"
@@ -50,68 +50,14 @@ runs:
         cd ${{ github.workspace }}/susfs4ksu
         git checkout "$SUSFS_COMMIT"
 
-    - name: Apply KSU SUSFS Patches
+    - name: Add SUSFS kernel config entries
       shell: bash
-      working-directory: ${{ github.workspace }}/kernel
       run: |
         set -euo pipefail
         FRAGMENT="${{ github.workspace }}/wild_gki.fragment"
-        KSU_DIR="${KSU_DIR:-KernelSU}"
-        echo "  Using KSU directory: ${KSU_DIR}"
-        if [ ! -d "${KSU_DIR}" ]; then
-          echo "⚠ KSU directory ${KSU_DIR} not found, skipping SUSFS KSU patch"
-          exit 0
-        fi
-        cd "${KSU_DIR}"
-
-        PATCH_DIR="${{ github.workspace }}/kernel_patches/wild"
-        mkdir -p "$PATCH_DIR"
-
-        # WildKernels moved ksun-* patches from wild/ to wild/archived/
-        # and added a consolidated patch. Try consolidated first, then
-        # individual archived patches (tried at both locations for safety).
-        PATCH_NAMES=(
-          "ksun-5a4a718-susfs-f7ae19ef-gki-android14-6.1.patch"
-          "ksun-8c1b4a9-susfs-v2.1.0-a14-6.1-45013457.patch"
-          "ksun-4c9737a-susfs-v2.1.0-a14-6.1-ef16cbce.patch"
-          "ksun-293ca01-susfs-v2.1.0-a14-6.1-ef16cbce.patch"
-          "ksun-e6ba52b-susfs-v2.1.0-a14-6.1-e1c57040.patch"
-          "ksu-susfs-v2.1.0.patch"
-        )
-        APPLIED=false
-        for PATCH_NAME in "${PATCH_NAMES[@]}"; do
-          PATCH_PATH="${PATCH_DIR}/${PATCH_NAME}"
-          if [ ! -f "$PATCH_PATH" ]; then
-            echo "Downloading ${PATCH_NAME}..."
-            DOWNLOADED=false
-            for DL_URL in \
-              "https://raw.githubusercontent.com/WildKernels/kernel_patches/main/wild/archived/${PATCH_NAME}" \
-              "https://raw.githubusercontent.com/WildKernels/kernel_patches/main/wild/${PATCH_NAME}"; do
-              if curl -LfsS --retry 3 --retry-delay 5 -o "$PATCH_PATH" "$DL_URL" 2>/dev/null; then
-                echo "  Downloaded"
-                DOWNLOADED=true
-                break
-              fi
-            done
-            if [ "$DOWNLOADED" = false ]; then
-              echo "  ⚠ Not available, skipping"
-              continue
-            fi
-          fi
-          if patch -p1 --dry-run < "$PATCH_PATH" 2>/dev/null; then
-            patch -p1 < "$PATCH_PATH"
-            echo "✅ ${PATCH_NAME} applied"
-            APPLIED=true
-            break
-          else
-            echo "⚠ ${PATCH_NAME} doesn't apply, trying next"
-          fi
-        done
-
-        # Always try to add SUSFS config entries with Kconfig existence check.
-        # This handles KSUN (KSU patch provides Kconfig), RSKSU (50_add patch
-        # provides Kconfig), and gracefully skips for KSU vanilla (no Kconfig).
         KERNEL_COMMON="${{ github.workspace }}/kernel/common"
+
+        # Check if SUSFS Kconfig exists in kernel tree; inject if missing.
         SUSFS_OPTIONS="KSU_SUSFS KSU_SUSFS_SUS_PATH KSU_SUSFS_SUS_MOUNT KSU_SUSFS_SUS_KSTAT KSU_SUSFS_SPOOF_UNAME KSU_SUSFS_ENABLE_LOG KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG KSU_SUSFS_OPEN_REDIRECT KSU_SUSFS_SUS_MAP"
         FOUND=0
         for OPT in $SUSFS_OPTIONS; do

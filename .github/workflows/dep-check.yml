@@ -1,12 +1,12 @@
-name: Dependency Update Check
+name: Weekly Dependency Check
 
 on:
   schedule:
-    - cron: '0 6 * * 1'
+    - cron: '0 6 * * 6'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   issues: write
   actions: write
 
@@ -19,8 +19,8 @@ jobs:
       - name: Check KernelSU-Next (dev branch)
         id: ksu
         run: |
-          PINNED="5a4a71874caaad06aa126f761c93391de1d32361"
-          LATEST=$(git ls-remote https://github.com/rifsxd/KernelSU-Next.git refs/heads/dev | awk '{print $1}')
+          PINNED="0608dfd715da5fb1a8d8993d70a417faeb9486fb"
+          LATEST=$(git ls-remote https://github.com/KernelSU-Next/KernelSU-Next.git refs/heads/dev | awk '{print $1}')
           echo "pinned=$PINNED" >> $GITHUB_OUTPUT
           echo "latest=$LATEST" >> $GITHUB_OUTPUT
           [ "$PINNED" != "$LATEST" ] && [ -n "$LATEST" ] && echo "updated=true" >> $GITHUB_OUTPUT || echo "updated=false" >> $GITHUB_OUTPUT
@@ -60,7 +60,7 @@ jobs:
       - name: Check SUSFS (android14-6.1)
         id: susfs_a14_6_1
         run: |
-          PINNED="9bf72ec2c83d40f194b936cabbc64ce342e005bf"
+          PINNED="ab4c23cfc7cb26821abb7a9d2071206713c070fe"
           LATEST=$(git ls-remote https://gitlab.com/simonpunk/susfs4ksu.git refs/heads/gki-android14-6.1 | awk '{print $1}')
           echo "pinned=$PINNED" >> $GITHUB_OUTPUT; echo "latest=$LATEST" >> $GITHUB_OUTPUT
           [ "$PINNED" != "$LATEST" ] && [ -n "$LATEST" ] && echo "updated=true" >> $GITHUB_OUTPUT || echo "updated=false" >> $GITHUB_OUTPUT
@@ -81,7 +81,23 @@ jobs:
           echo "pinned=$PINNED" >> $GITHUB_OUTPUT; echo "latest=$LATEST" >> $GITHUB_OUTPUT
           [ "$PINNED" != "$LATEST" ] && [ -n "$LATEST" ] && echo "updated=true" >> $GITHUB_OUTPUT || echo "updated=false" >> $GITHUB_OUTPUT
 
-      - name: Branch-tracked deps (HEAD check only)
+      - name: Check NTSYNC reference (teldommm main)
+        id: ntsync
+        run: |
+          LATEST=$(git ls-remote https://github.com/teldommm/GKI_KernelSU_SUSFS-NTSYNC.git refs/heads/main | awk '{print $1}')
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "pinned=local" >> $GITHUB_OUTPUT
+          echo "updated=false" >> $GITHUB_OUTPUT
+
+      - name: Check Droidspaces-OSS (ravindu644 main)
+        id: droidspaces
+        run: |
+          LATEST=$(git ls-remote https://github.com/ravindu644/Droidspaces-OSS.git refs/heads/main | awk '{print $1}')
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "pinned=local" >> $GITHUB_OUTPUT
+          echo "updated=false" >> $GITHUB_OUTPUT
+
+      - name: Check branch-tracked deps
         id: branches
         run: |
           PATCHES=$(git ls-remote https://github.com/WildKernels/kernel_patches.git refs/heads/main | awk '{print $1}')
@@ -100,84 +116,126 @@ jobs:
           HAS_UPDATES=false
 
           build_row() {
-            local name="$1" pinned="$2" latest="$3" updated="$4"
+            local name="$1" pinned="$2" latest="$3" updated="$4" note="$5"
             local sp="${pinned:0:10}" sl="${latest:0:10}"
             if [ "$updated" = "true" ]; then
               HAS_UPDATES=true
-              echo "| ${name} | \`${sp}\` | \`${sl}\` | 🔄 Update |"
+              echo "| **${name}** | \`${sp}\` | \`${sl}\` | 🔄 Update | ${note} |"
             else
-              [ -z "$latest" ] && latest_s="⚠ unreachable" || latest_s="✅ up to date"
-              echo "| ${name} | \`${sp}\` | ${latest_s} |"
+              [ -z "$latest" ] && latest_s="⚠ unreachable" || latest_s="\`${sl}\` ✅"
+              echo "| ${name} | \`${sp}\` | ${latest_s} | | ${note} |"
             fi
           }
 
+          build_upstream_row() {
+            local name="$1" latest="$2" note="$3"
+            local sl="${latest:0:10}"
+            [ -z "$latest" ] && sl="⚠ unreachable"
+            echo "| ${name} | local patches | \`${sl}\` | 🔄 Check upstream | ${note} |"
+          }
+
+          build_branch_row() {
+            local name="$1" branch="$2" hash="$3" note="$4"
+            local sh="${hash:0:10}"
+            echo "| ${name} | \`${branch}\` | \`${sh}\` | 🔄 Branch (manual) | ${note} |"
+          }
+
           {
-            echo "## 📦 Dependency Update Check"
+            echo "## 📦 Weekly Dependency Check"
             echo ""
             echo "Ran at $(TZ=UTC date '+%Y-%m-%d %H:%M UTC')"
             echo ""
-            echo "| Dependency | Pinned | Latest | Status |"
-            echo "|---|---|---|---|"
+            echo "### Root Solutions"
+            echo ""
+            echo "| Dependency | Pinned | Latest | Status | Notes |"
+            echo "|---|---|---|---|---|"
 
             build_row "KernelSU-Next" \
               "${{ steps.ksu.outputs.pinned }}" \
               "${{ steps.ksu.outputs.latest }}" \
-              "${{ steps.ksu.outputs.updated }}"
+              "${{ steps.ksu.outputs.updated }}" \
+              "Edit \`.github/actions/kernelsu/action.yml\`"
 
             build_row "SUSFS android12-5.10" \
               "${{ steps.susfs_a12_5_10.outputs.pinned }}" \
               "${{ steps.susfs_a12_5_10.outputs.latest }}" \
-              "${{ steps.susfs_a12_5_10.outputs.updated }}"
-
+              "${{ steps.susfs_a12_5_10.outputs.updated }}" \
+              "Legacy build (main.yml)"
             build_row "SUSFS android13-5.10" \
               "${{ steps.susfs_a13_5_10.outputs.pinned }}" \
               "${{ steps.susfs_a13_5_10.outputs.latest }}" \
-              "${{ steps.susfs_a13_5_10.outputs.updated }}"
-
+              "${{ steps.susfs_a13_5_10.outputs.updated }}" \
+              "Legacy build"
             build_row "SUSFS android13-5.15" \
               "${{ steps.susfs_a13_5_15.outputs.pinned }}" \
               "${{ steps.susfs_a13_5_15.outputs.latest }}" \
-              "${{ steps.susfs_a13_5_15.outputs.updated }}"
-
+              "${{ steps.susfs_a13_5_15.outputs.updated }}" \
+              "Legacy build"
             build_row "SUSFS android14-5.15" \
               "${{ steps.susfs_a14_5_15.outputs.pinned }}" \
               "${{ steps.susfs_a14_5_15.outputs.latest }}" \
-              "${{ steps.susfs_a14_5_15.outputs.updated }}"
-
+              "${{ steps.susfs_a14_5_15.outputs.updated }}" \
+              "Legacy build"
             build_row "SUSFS android14-6.1" \
               "${{ steps.susfs_a14_6_1.outputs.pinned }}" \
               "${{ steps.susfs_a14_6_1.outputs.latest }}" \
-              "${{ steps.susfs_a14_6_1.outputs.updated }}"
-
+              "${{ steps.susfs_a14_6_1.outputs.updated }}" \
+              "Pixel 6 (oriole) — primary"
             build_row "SUSFS android15-6.6" \
               "${{ steps.susfs_a15_6_6.outputs.pinned }}" \
               "${{ steps.susfs_a15_6_6.outputs.latest }}" \
-              "${{ steps.susfs_a15_6_6.outputs.updated }}"
-
+              "${{ steps.susfs_a15_6_6.outputs.updated }}" \
+              "Tensor device"
             build_row "SUSFS android16-6.12" \
               "${{ steps.susfs_a16_6_12.outputs.pinned }}" \
               "${{ steps.susfs_a16_6_12.outputs.latest }}" \
-              "${{ steps.susfs_a16_6_12.outputs.updated }}"
-
-            KP="${{ steps.branches.outputs.kernel_patches }}"
-            echo "| kernel_patches (WildKernels) | branch:\`main\` | \`${KP:0:10}\` | 🔄 Branch (manual review) |"
-            BBG="${{ steps.branches.outputs.bbg }}"
-            echo "| Baseband Guard | branch:\`main\` | \`${BBG:0:10}\` | 🔄 Branch (manual review) |"
-            AK3="${{ steps.branches.outputs.anykernel3 }}"
-            echo "| AnyKernel3 | branch:\`gki-2.0\` | \`${AK3:0:10}\` | 🔄 Branch (manual review) |"
-            DP="${{ steps.branches.outputs.duchamp }}"
-            echo "| GKI-Duchamp patches | branch:\`master\` | \`${DP:0:10}\` | 🔄 Branch (manual review) |"
+              "${{ steps.susfs_a16_6_12.outputs.updated }}" \
+              "Future Tensor"
 
             echo ""
-            echo "### Notes"
-            echo "- Commit-pinned deps show exact status above."
-            echo "- Branch-tracked deps show the latest HEAD; manual review needed."
-            echo "- To update commit pins, edit the relevant action file and push."
+            echo "### Kernel Patches (local files, upstream reference)"
+            echo ""
+            echo "| Patch Set | Local | Upstream HEAD | Status | Notes |"
+            echo "|---|---|---|---|---|"
+
+            build_upstream_row "NTSYNC" \
+              "${{ steps.ntsync.outputs.latest }}" \
+              "Check \`kernel_patches/ntsync/\` vs teldommm"
+            build_upstream_row "Droidspaces-OSS" \
+              "${{ steps.droidspaces.outputs.latest }}" \
+              "Check \`kernel_patches/droidspaces/\` vs ravindu644"
+
+            echo ""
+            echo "### Branch-tracked (manual review)"
+            echo ""
+            echo "| Dependency | Branch | HEAD | Status | Notes |"
+            echo "|---|---|---|---|---|"
+
+            KP="${{ steps.branches.outputs.kernel_patches }}"
+            build_branch_row "kernel_patches (WildKernels)" "main" "$KP" "Check \`wild/\` for new hooks/patches"
+            BBG="${{ steps.branches.outputs.bbg }}"
+            build_branch_row "Baseband Guard" "main" "$BBG" "Vulnerability fixes"
+            AK3="${{ steps.branches.outputs.anykernel3 }}"
+            build_branch_row "AnyKernel3" "gki-2.0" "$AK3" "Packaging updates"
+            DP="${{ steps.branches.outputs.duchamp }}"
+            build_branch_row "GKI-Duchamp" "master" "$DP" "Kernel hardening patches"
+
+            echo ""
+            echo "### Quick actions"
+            echo ""
+            echo "| When this is flagged | Do this |"
+            echo "|---|---|"
+            echo "| KSUN or SUSFS updated | Update commit hash in \`.github/actions/*/action.yml\` → push → auto-build triggers |"
+            echo "| NTSYNC upstream changed | Review \`teldommm/GKI_KernelSU_SUSFS-NTSYNC\` diff, update \`kernel_patches/ntsync/\` |"
+            echo "| Droidspaces upstream changed | Review \`ravindu644/Droidspaces-OSS\` diff, update \`kernel_patches/droidspaces/\` |"
+            echo "| Branch dep HEAD changed | Review commits, cherry-pick relevant changes |"
+            echo ""
+            echo "---"
+            echo "_Auto-generated by \`dep-check.yml\` · runs Saturdays 06:00 UTC_"
           } > /tmp/report.md
 
           echo "has_updates=${HAS_UPDATES}" >> $GITHUB_OUTPUT
 
-          # Write per-dependency trigger flags for the dispatch step
           write_flag() { echo "$1" > "/tmp/trigger-$2"; }
           write_flag "${{ steps.susfs_a12_5_10.outputs.updated }}" "susfs_a12_5_10"
           write_flag "${{ steps.susfs_a13_5_10.outputs.updated }}" "susfs_a13_5_10"
@@ -201,7 +259,6 @@ jobs:
               } catch { return false; }
             }
 
-            // Legacy builds (main.yml): a12-5.10, a13-5.10, a13-5.15, a14-5.15
             const legacyInputs = {
               release_type: 'Action', susfs: 'true', use_repo: 'true',
               root: 'KernelSU-Next', variant: 'Normal',
@@ -214,22 +271,15 @@ jobs:
             ];
             let legacyTriggered = false;
             for (const [stepId, input] of legacyMap) {
-              if (readFlag(stepId)) { legacyInputs[input] = 'true'; legacyTriggered = true; console.log(`  legacy ${input}=true`); }
+              if (readFlag(stepId)) { legacyInputs[input] = 'true'; legacyTriggered = true; }
             }
             if (legacyTriggered) {
               await github.rest.actions.createWorkflowDispatch({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: 'main.yml',
-                ref: 'main',
-                inputs: legacyInputs,
+                owner: context.repo.owner, repo: context.repo.repo,
+                workflow_id: 'main.yml', ref: 'main', inputs: legacyInputs,
               });
-              console.log(`Dispatched main.yml: ${JSON.stringify(legacyInputs)}`);
-            } else {
-              console.log('No legacy build updates to dispatch');
             }
 
-            // Tensor builds (pixel.yml): a14-6.1, a15-6.6, a16-6.12
             const tensorInputs = {
               release_type: 'Action', susfs: 'true', use_repo: 'true',
               root: 'KernelSU-Next', variant: 'Normal',
@@ -241,25 +291,17 @@ jobs:
             ];
             let tensorTriggered = false;
             for (const [stepId, input] of tensorMap) {
-              if (readFlag(stepId)) { tensorInputs[input] = 'true'; tensorTriggered = true; console.log(`  tensor ${input}=true`); }
+              if (readFlag(stepId)) { tensorInputs[input] = 'true'; tensorTriggered = true; }
             }
-            // KSU-Next update also triggers a Tensor build (Pixel 6 = a14-6.1)
             if (readFlag('ksu')) {
               tensorInputs.build_a14_6_1 = 'true';
               tensorTriggered = true;
-              console.log('  tensor build_a14_6_1=true (KSU updated, primary)');
             }
             if (tensorTriggered) {
               await github.rest.actions.createWorkflowDispatch({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: 'pixel.yml',
-                ref: 'main',
-                inputs: tensorInputs,
+                owner: context.repo.owner, repo: context.repo.repo,
+                workflow_id: 'pixel.yml', ref: 'main', inputs: tensorInputs,
               });
-              console.log(`Dispatched pixel.yml: ${JSON.stringify(tensorInputs)}`);
-            } else {
-              console.log('No Tensor build updates to dispatch');
             }
 
       - name: Create or update issue
@@ -274,31 +316,26 @@ jobs:
 
             try {
               const { data: issues } = await github.rest.issues.listForRepo({
-                owner, repo,
-                state: 'open',
-                labels: 'deps'
+                owner, repo, state: 'open', labels: 'deps'
               });
 
               const existing = issues.find(i =>
-                i.title === '📦 Dependency Update Check'
+                i.title === '📦 Weekly Dependency Check'
               );
 
               if (existing) {
                 await github.rest.issues.update({
-                  owner, repo,
-                  issue_number: existing.number,
-                  body
+                  owner, repo, issue_number: existing.number, body
                 });
                 console.log(`Updated issue #${existing.number}`);
               } else {
                 await github.rest.issues.create({
                   owner, repo,
-                  title: '📦 Dependency Update Check',
-                  body,
-                  labels: ['deps']
+                  title: '📦 Weekly Dependency Check',
+                  body, labels: ['deps']
                 });
                 console.log('Created new issue');
               }
             } catch (err) {
-              console.log(`Skipping issue creation: ${err.message}`);
+              console.log(`Skipping issue: ${err.message}`);
             }
