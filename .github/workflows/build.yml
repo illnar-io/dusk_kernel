@@ -115,18 +115,13 @@ jobs:
         # Apply with fuzz=3 — the SUSFS patches may have added adjacent lines
         # to kernel/feature/selinux_hide.c, but the function declarations
         # we need to change are still present (just no longer static).
-        patch -p1 --fuzz=3 --force < static.patch || {
-          echo "⚠ static.patch with fuzz failed — trying to sed directly"
-          sed -i 's/^static int security_context_to_sid_with_policy/int security_context_to_sid_with_policy/' kernel/feature/selinux_hide.c
-          sed -i 's/^static int security_sid_to_context_with_policy/int security_sid_to_context_with_policy/' kernel/feature/selinux_hide.c
-          sed -i 's/^static void security_compute_av_user_with_policy/void security_compute_av_user_with_policy/' kernel/feature/selinux_hide.c
-          echo "✓ Applied via sed fallback"
-        }
-        # Also strip `static` from the function definitions further down in the file
-        # (new KSUN 30802e7260e2 added `static` to the definitions too)
-        sed -i 's/^static int security_context_to_sid_with_policy/int security_context_to_sid_with_policy/' kernel/feature/selinux_hide.c
-        sed -i 's/^static int security_sid_to_context_with_policy/int security_sid_to_context_with_policy/' kernel/feature/selinux_hide.c
-        sed -i 's/^static void security_compute_av_user_with_policy/void security_compute_av_user_with_policy/' kernel/feature/selinux_hide.c
+        patch -p1 --fuzz=3 --force < static.patch 2>/dev/null || true
+        # Strip `static` from both declarations AND definitions.  The patch
+        # covers declarations (old KSUN) but new KSUN also has `static` on
+        # definitions — and one of them uses __nocfi.
+        for fn in security_context_to_sid_with_policy security_sid_to_context_with_policy security_compute_av_user_with_policy; do
+          sed -i "/${fn}/s/^static //" kernel/feature/selinux_hide.c
+        done
 
     - name: KSUN SUSFS integration (provide missing symbols for 50_add patch)
       shell: bash

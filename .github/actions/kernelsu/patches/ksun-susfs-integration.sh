@@ -42,48 +42,37 @@ INTEGRATION_DST="$KSUN_DIR/susfs_integration.c"
 # Step 1: selinux_hide.c - remove static from 6 vars, add EXPORT_SYMBOL
 # ---------------------------------------------------------------
 echo "[1/6] Patching selinux_hide.c — static → non-static + EXPORT_SYMBOL"
-perl -i -0777 -pe '
-  my @vars = (
-    "bool ksu_selinux_hide_enabled __read_mostly",
-    "bool ksu_selinux_hide_running __read_mostly",
-    "struct page \\*fake_status",
-    "struct static_key_false fake_status_initialize_key",
-    "void initialize_fake_status\\(void\\)",
-    "struct selinux_state fake_state",
-  );
-  for my $var (@vars) {
-    # Remove leading "static "
-    s/^static (\Q$var\E)/$1/gm;
-  }
-' "$SELINUX_HIDE"
 
-# Add EXPORT_SYMBOL after each non-static var definition
-perl -i -0777 -pe '
-  my %exports = (
-    "bool ksu_selinux_hide_enabled __read_mostly" =>
-      "EXPORT_SYMBOL(ksu_selinux_hide_enabled);",
-    "bool ksu_selinux_hide_running __read_mostly" =>
-      "EXPORT_SYMBOL(ksu_selinux_hide_running);",
-    "struct page \\*fake_status;" =>
-      "EXPORT_SYMBOL(fake_status);",
-    "struct static_key_false fake_status_initialize_key;" =>
-      "EXPORT_SYMBOL(fake_status_initialize_key);",
-    "void initialize_fake_status\\(void\\)" =>
-      "EXPORT_SYMBOL(initialize_fake_status);",
-  );
-  while (my ($re, $exp) = each %exports) {
-    # Match the definition line and insert EXPORT_SYMBOL after its semicolon
-    if (s/^($re;)$/$1\n$exp/gm) {
-      # success
-    }
-  }
-' "$SELINUX_HIDE"
+# Remove `static` from all definitions that SUSFS 50_add references.
+# Use sed (function-name based) to stay resilient against KSUN version changes.
+for sym in ksu_selinux_hide_enabled ksu_selinux_hide_running fake_status fake_status_initialize_key initialize_fake_status fake_state; do
+  sed -i "/^static.*${sym}/s/^static //" "$SELINUX_HIDE"
+done
 
-# fake_state has #if guard - handle separately (may not be present on >=6.6)
+# Add EXPORT_SYMBOL after each definition (skip if already present).
+# Use unique line-matching patterns to avoid false matches.
+for pair in \
+  'ksu_selinux_hide_enabled __read_mostly:ksu_selinux_hide_enabled' \
+  'ksu_selinux_hide_running __read_mostly:ksu_selinux_hide_running' \
+  'struct page \*fake_status:fake_status'; do
+  pattern="${pair%%:*}"
+  sym="${pair#*:}"
+  grep -q "EXPORT_SYMBOL(${sym})" "$SELINUX_HIDE" 2>/dev/null && continue
+  sed -i "/${pattern}/a\\EXPORT_SYMBOL(${sym});" "$SELINUX_HIDE"
+done
+
+# fake_status_initialize_key — macro-based, add after the DEFINE line
+grep -q "EXPORT_SYMBOL(fake_status_initialize_key)" "$SELINUX_HIDE" 2>/dev/null ||
+  sed -i '/DEFINE_STATIC_KEY_FALSE(fake_status_initialize_key)/a\EXPORT_SYMBOL(fake_status_initialize_key);' "$SELINUX_HIDE"
+
+# initialize_fake_status — definition can be () or (void)
+grep -q "EXPORT_SYMBOL(initialize_fake_status)" "$SELINUX_HIDE" 2>/dev/null ||
+  sed -i '/^void initialize_fake_status\s*(/a\EXPORT_SYMBOL(initialize_fake_status);' "$SELINUX_HIDE"
+
+# fake_state — guarded by #if < 6.6, may not exist on >= 6.6
 if grep -q "struct selinux_state fake_state;" "$SELINUX_HIDE" 2>/dev/null; then
-  perl -i -0777 -pe '
-    s/^(struct selinux_state fake_state;)$/$1\nEXPORT_SYMBOL(fake_state);/gm;
-  ' "$SELINUX_HIDE"
+  grep -q "EXPORT_SYMBOL(fake_state)" "$SELINUX_HIDE" 2>/dev/null ||
+    sed -i '/^struct selinux_state fake_state;$/a\EXPORT_SYMBOL(fake_state);' "$SELINUX_HIDE"
 fi
 
 echo "  ✓ selinux_hide.c patched"
