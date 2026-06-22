@@ -9,13 +9,14 @@
 # define these symbols, causing MODPOST/linker errors.
 #
 # What this script does:
-#   1. Changes `bool ksu_su_compat_enabled` → DEFINE_STATIC_KEY_TRUE in sucompat.c
+#   1. Removes `static` from 6 variables in selinux_hide.c + adds EXPORT_SYMBOL
+#   2. Changes `bool ksu_su_compat_enabled` → DEFINE_STATIC_KEY_TRUE in sucompat.c
 #      and updates su_compat_feature_get/set to use static_branch_* calls
-#   2. Updates sucompat.h extern to match
-#   3. Copies susfs_integration.c into the KSUN tree (provides selinux SID/hide
-#      symbols + hook stubs + su redirects)
-#   4. Adds susfs_integration.o to Kbuild under CONFIG_KSU_SUSFS guard
-#   5. Updates syscall_event_bridge.c to use static_branch_unlikely for the
+#   3. Updates sucompat.h extern to match
+#   4. Copies susfs_integration.c into the KSUN tree (provides SID symbols +
+#      hook stubs + su redirects)
+#   5. Adds susfs_integration.o to Kbuild under CONFIG_KSU_SUSFS guard
+#   6. Updates syscall_event_bridge.c to use static_branch_unlikely for the
 #      now-static-key ksu_su_compat_enabled
 # =============================================================================
 
@@ -30,6 +31,7 @@ fi
 
 echo "=== KSUN SUSFS Integration for 0608dfd7 ==="
 
+SELINUX_HIDE="$KSUN_DIR/feature/selinux_hide.c"
 SUCOMPAT_C="$KSUN_DIR/feature/sucompat.c"
 SUCOMPAT_H="$KSUN_DIR/feature/sucompat.h"
 KBUILD="$KSUN_DIR/Kbuild"
@@ -37,9 +39,59 @@ INTEGRATION_SRC="$(dirname "$0")/susfs_integration.c"
 INTEGRATION_DST="$KSUN_DIR/susfs_integration.c"
 
 # ---------------------------------------------------------------
-# Step 1: sucompat.c — bool → DEFINE_STATIC_KEY_TRUE
+# Step 1: selinux_hide.c - remove static from 6 vars, add EXPORT_SYMBOL
 # ---------------------------------------------------------------
-echo "[1/5] Patching sucompat.c — bool → static_key_true"
+echo "[1/6] Patching selinux_hide.c — static → non-static + EXPORT_SYMBOL"
+perl -i -0777 -pe '
+  my @vars = (
+    "bool ksu_selinux_hide_enabled __read_mostly",
+    "bool ksu_selinux_hide_running __read_mostly",
+    "struct page \\*fake_status",
+    "struct static_key_false fake_status_initialize_key",
+    "void initialize_fake_status\\(void\\)",
+    "struct selinux_state fake_state",
+  );
+  for my $var (@vars) {
+    # Remove leading "static "
+    s/^static (\Q$var\E)/$1/gm;
+  }
+' "$SELINUX_HIDE"
+
+# Add EXPORT_SYMBOL after each non-static var definition
+perl -i -0777 -pe '
+  my %exports = (
+    "bool ksu_selinux_hide_enabled __read_mostly" =>
+      "EXPORT_SYMBOL(ksu_selinux_hide_enabled);",
+    "bool ksu_selinux_hide_running __read_mostly" =>
+      "EXPORT_SYMBOL(ksu_selinux_hide_running);",
+    "struct page \\*fake_status;" =>
+      "EXPORT_SYMBOL(fake_status);",
+    "struct static_key_false fake_status_initialize_key;" =>
+      "EXPORT_SYMBOL(fake_status_initialize_key);",
+    "void initialize_fake_status\\(void\\)" =>
+      "EXPORT_SYMBOL(initialize_fake_status);",
+  );
+  while (my ($re, $exp) = each %exports) {
+    # Match the definition line and insert EXPORT_SYMBOL after its semicolon
+    if (s/^($re;)$/$1\n$exp/gm) {
+      # success
+    }
+  }
+' "$SELINUX_HIDE"
+
+# fake_state has #if guard - handle separately (may not be present on >=6.6)
+if grep -q "struct selinux_state fake_state;" "$SELINUX_HIDE" 2>/dev/null; then
+  perl -i -0777 -pe '
+    s/^(struct selinux_state fake_state;)$/$1\nEXPORT_SYMBOL(fake_state);/gm;
+  ' "$SELINUX_HIDE"
+fi
+
+echo "  ✓ selinux_hide.c patched"
+
+# ---------------------------------------------------------------
+# Step 2: sucompat.c — bool → DEFINE_STATIC_KEY_TRUE
+# ---------------------------------------------------------------
+echo "[2/6] Patching sucompat.c — bool → static_key_true"
 if grep -q "^bool ksu_su_compat_enabled" "$SUCOMPAT_C" 2>/dev/null; then
   perl -i -0777 -pe '
     # 3a. Definition: bool → DEFINE_STATIC_KEY_TRUE + EXPORT_SYMBOL
@@ -76,9 +128,9 @@ else
 fi
 
 # ---------------------------------------------------------------
-# Step 2: sucompat.h — update extern declaration
+# Step 3: sucompat.h — update extern declaration
 # ---------------------------------------------------------------
-echo "[2/5] Patching sucompat.h — updating extern"
+echo "[3/6] Patching sucompat.h — updating extern"
 if grep -q "^extern bool ksu_su_compat_enabled;" "$SUCOMPAT_H" 2>/dev/null; then
   sed -i 's/^extern bool ksu_su_compat_enabled;/extern struct static_key_true ksu_su_compat_enabled;/' "$SUCOMPAT_H"
   echo "  ✓ sucompat.h updated"
@@ -87,9 +139,9 @@ else
 fi
 
 # ---------------------------------------------------------------
-# Step 3: Copy susfs_integration.c into KSUN tree
+# Step 4: Copy susfs_integration.c into KSUN tree
 # ---------------------------------------------------------------
-echo "[3/5] Copying susfs_integration.c → $INTEGRATION_DST"
+echo "[4/6] Copying susfs_integration.c → $INTEGRATION_DST"
 if [ -f "$INTEGRATION_SRC" ]; then
   cp "$INTEGRATION_SRC" "$INTEGRATION_DST"
   echo "  ✓ susfs_integration.c copied"
@@ -99,9 +151,9 @@ else
 fi
 
 # ---------------------------------------------------------------
-# Step 4: Kbuild — add susfs_integration.o under CONFIG_KSU_SUSFS
+# Step 5: Kbuild — add susfs_integration.o under CONFIG_KSU_SUSFS
 # ---------------------------------------------------------------
-echo "[4/5] Patching Kbuild — adding susfs_integration.o"
+echo "[5/6] Patching Kbuild — adding susfs_integration.o"
 if grep -q "susfs_integration" "$KBUILD" 2>/dev/null; then
   echo "  ✓ already present, skipping"
 else
@@ -119,9 +171,9 @@ else
 fi
 
 # ---------------------------------------------------------------
-# Step 5: syscall_event_bridge.c — use static_branch_unlikely
+# Step 6: syscall_event_bridge.c — use static_branch_unlikely
 # ---------------------------------------------------------------
-echo "[5/5] Patching syscall_event_bridge.c — use static_branch_unlikely"
+echo "[6/6] Patching syscall_event_bridge.c — use static_branch_unlikely"
 SYSCALL_BRIDGE="$KSUN_DIR/hook/syscall_event_bridge.c"
 if grep -q "!ksu_su_compat_enabled" "$SYSCALL_BRIDGE" 2>/dev/null; then
   perl -i -0777 -pe '
@@ -136,6 +188,7 @@ fi
 echo ""
 echo "=== KSUN SUSFS Integration complete ==="
 echo "Patched files:"
+echo "  $SELINUX_HIDE"
 echo "  $SUCOMPAT_C"
 echo "  $SUCOMPAT_H"
 echo "  $KBUILD"

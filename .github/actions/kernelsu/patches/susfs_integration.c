@@ -42,22 +42,6 @@ u32 susfs_priv_app_sid __read_mostly;
 EXPORT_SYMBOL(susfs_priv_app_sid);
 
 /* ---------------------------------------------------------------
- * SELinux hide symbols (SUSFS)
- * KSUN selinux_hide.c defines these as static; export them here.
- * --------------------------------------------------------------- */
-struct static_key_false fake_status_initialize_key;
-EXPORT_SYMBOL(fake_status_initialize_key);
-
-struct page *fake_status;
-EXPORT_SYMBOL(fake_status);
-
-void initialize_fake_status(void)
-{
-	pr_warn("susfs: initialize_fake_status stub (GKI)\n");
-}
-EXPORT_SYMBOL(initialize_fake_status);
-
-/* ---------------------------------------------------------------
  * ksu_handle_execveat - init/zygote exec hook (50_add in fs/exec.c)
  * --------------------------------------------------------------- */
 int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv,
