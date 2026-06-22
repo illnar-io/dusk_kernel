@@ -58,7 +58,7 @@ on:
       build_companion:
         description: "Build DUSK Companion module"
         type: boolean
-        default: false
+        default: true
 
 jobs:
   build-a12-5-10:

@@ -18,15 +18,15 @@ on:
       build_a14_6_1:
         description: "Android 14 - 6.1 (Pixel 6 / Tensor G1)"
         type: boolean
-        default: false
+        default: true
       build_a15_6_6:
         description: "Android 15 - 6.6 (Pixel 8 / Tensor G3)"
         type: boolean
-        default: false
+        default: true
       build_a16_6_12:
         description: "Android 16 - 6.12 (Pixel 10 / Tensor G5)"
         type: boolean
-        default: false
+        default: true
       root:
         description: "Root solution"
         type: choice
@@ -54,7 +54,7 @@ on:
       build_companion:
         description: "Build DUSK Companion module"
         type: boolean
-        default: false
+        default: true
 
 jobs:
   build-a14-6-1:
