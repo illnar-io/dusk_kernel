@@ -18,19 +18,19 @@ on:
       build_a12_5_10:
         description: "Android 12 - 5.10"
         type: boolean
-        default: false
+        default: true
       build_a13_5_10:
         description: "Android 13 - 5.10"
         type: boolean
-        default: false
+        default: true
       build_a13_5_15:
         description: "Android 13 - 5.15"
         type: boolean
-        default: false
+        default: true
       build_a14_5_15:
         description: "Android 14 - 5.15"
         type: boolean
-        default: false
+        default: true
       root:
         description: "Root solution"
         type: choice
