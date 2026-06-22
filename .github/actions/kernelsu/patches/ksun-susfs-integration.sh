@@ -114,7 +114,7 @@ if grep -q "^bool ksu_su_compat_enabled" "$SUCOMPAT_C" 2>/dev/null; then
     s/\*value = ksu_su_compat_enabled \? 1 : 0;/*value = static_branch_unlikely(\&ksu_su_compat_enabled) ? 1 : 0;/g;
 
     # 3c. su_compat_feature_set: bool assignment → static_branch_enable/disable
-    s/bool enable = value != 0;\n\tksu_su_compat_enabled = enable;\n\tpr_info\("su_compat: set to %d\\n", enable\);/if (value)\n\t\tstatic_branch_enable(\&ksu_su_compat_enabled);\n\telse\n\t\tstatic_branch_disable(\&ksu_su_compat_enabled);\n\tpr_info("su_compat: set to %d\\n", value);/g;
+    s/bool enable = value != 0;\n\tksu_su_compat_enabled = enable;\n\tpr_info\("su_compat: set to %d\\n", enable\);/if (value)\n\t\tstatic_branch_enable(\&ksu_su_compat_enabled);\n\telse\n\t\tstatic_branch_disable(\&ksu_su_compat_enabled);\n\tpr_info("su_compat: set to %llu\\n", value);/g;
   ' "$SUCOMPAT_C"
   echo "  ✓ ksu_su_compat_enabled changed to static_key_true"
   echo "  ✓ su_compat_feature_get/set uses updated"
@@ -133,7 +133,7 @@ else
     if grep -q "ksu_su_compat_enabled ? 1 : 0" "$SUCOMPAT_C" 2>/dev/null; then
       perl -i -0777 -pe '
         s/\*value = ksu_su_compat_enabled \? 1 : 0;/*value = static_branch_unlikely(\&ksu_su_compat_enabled) ? 1 : 0;/g;
-        s/bool enable = value != 0;\n\tksu_su_compat_enabled = enable;\n\tpr_info\("su_compat: set to %d\\n", enable\);/if (value)\n\t\tstatic_branch_enable(\&ksu_su_compat_enabled);\n\telse\n\t\tstatic_branch_disable(\&ksu_su_compat_enabled);\n\tpr_info("su_compat: set to %d\\n", value);/g;
+        s/bool enable = value != 0;\n\tksu_su_compat_enabled = enable;\n\tpr_info\("su_compat: set to %d\\n", enable\);/if (value)\n\t\tstatic_branch_enable(\&ksu_su_compat_enabled);\n\telse\n\t\tstatic_branch_disable(\&ksu_su_compat_enabled);\n\tpr_info("su_compat: set to %llu\\n", value);/g;
       ' "$SUCOMPAT_C"
       echo "  ✓ su_compat_feature_get/set uses updated"
     fi
