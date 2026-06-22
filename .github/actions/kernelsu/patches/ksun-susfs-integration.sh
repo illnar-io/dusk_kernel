@@ -65,9 +65,10 @@ done
 grep -q "EXPORT_SYMBOL(fake_status_initialize_key)" "$SELINUX_HIDE" 2>/dev/null ||
   sed -i '/DEFINE_STATIC_KEY_FALSE(fake_status_initialize_key)/a\EXPORT_SYMBOL(fake_status_initialize_key);' "$SELINUX_HIDE"
 
-# initialize_fake_status — definition can be () or (void)
+# initialize_fake_status — is a function definition, not a variable.
+# EXPORT_SYMBOL must go after the function body; append to EOF.
 grep -q "EXPORT_SYMBOL(initialize_fake_status)" "$SELINUX_HIDE" 2>/dev/null ||
-  sed -i '/^void initialize_fake_status\s*(/a\EXPORT_SYMBOL(initialize_fake_status);' "$SELINUX_HIDE"
+  echo "EXPORT_SYMBOL(initialize_fake_status);" >> "$SELINUX_HIDE"
 
 # fake_state — guarded by #if < 6.6, may not exist on >= 6.6
 if grep -q "struct selinux_state fake_state;" "$SELINUX_HIDE" 2>/dev/null; then
