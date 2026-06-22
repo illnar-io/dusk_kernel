@@ -32,16 +32,6 @@ DEFINE_STATIC_KEY_TRUE(ksu_is_init_rc_hook_enabled);
 EXPORT_SYMBOL(ksu_is_init_rc_hook_enabled);
 
 /* ---------------------------------------------------------------
- * ksu_handle_input_handle_event - input event hook (SUSFS)
- * KSUN 0608dfd7 does not define this; provide as a stub.
- * --------------------------------------------------------------- */
-int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code, int *value)
-{
-	return 0;
-}
-EXPORT_SYMBOL(ksu_handle_input_handle_event);
-
-/* ---------------------------------------------------------------
  * ksu_handle_execveat - init/zygote exec hook (50_add in fs/exec.c)
  * --------------------------------------------------------------- */
 int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv,
