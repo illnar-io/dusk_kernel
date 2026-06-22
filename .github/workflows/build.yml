@@ -123,6 +123,18 @@ jobs:
           echo "✓ Applied via sed fallback"
         }
 
+    - name: KSUN SUSFS integration (provide missing symbols for 50_add patch)
+      shell: bash
+      run: |
+        set -euo pipefail
+        ROOT="${{ inputs.root }}"
+        if [[ "$ROOT" != "KernelSU-Next" && "$ROOT" != "KSUN" ]]; then
+          echo "Skipping — not KernelSU-Next"
+          exit 0
+        fi
+        SCRIPT="${{ github.workspace }}/.github/actions/kernelsu/patches/ksun-susfs-integration.sh"
+        bash "$SCRIPT" "${{ github.workspace }}/kernel/KernelSU-Next/kernel"
+
     - name: NTSYNC
       uses: ./.github/actions/ntsync
       with:
