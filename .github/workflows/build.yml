@@ -122,6 +122,11 @@ jobs:
           sed -i 's/^static void security_compute_av_user_with_policy/void security_compute_av_user_with_policy/' kernel/feature/selinux_hide.c
           echo "✓ Applied via sed fallback"
         }
+        # Also strip `static` from the function definitions further down in the file
+        # (new KSUN 30802e7260e2 added `static` to the definitions too)
+        sed -i 's/^static int security_context_to_sid_with_policy/int security_context_to_sid_with_policy/' kernel/feature/selinux_hide.c
+        sed -i 's/^static int security_sid_to_context_with_policy/int security_sid_to_context_with_policy/' kernel/feature/selinux_hide.c
+        sed -i 's/^static void security_compute_av_user_with_policy/void security_compute_av_user_with_policy/' kernel/feature/selinux_hide.c
 
     - name: KSUN SUSFS integration (provide missing symbols for 50_add patch)
       shell: bash
