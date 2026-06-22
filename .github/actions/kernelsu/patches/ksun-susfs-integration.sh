@@ -16,6 +16,8 @@
 #   4. Updates sucompat.h extern to match
 #   5. Copies susfs_integration.c into the KSUN tree
 #   6. Adds susfs_integration.o to Kbuild under CONFIG_KSU_SUSFS guard
+#   7. Updates syscall_event_bridge.c to use static_branch_unlikely for the
+#      now-static-key ksu_su_compat_enabled
 # =============================================================================
 
 set -euo pipefail
@@ -183,6 +185,21 @@ else
   echo "  ✓ Kbuild updated"
 fi
 
+# ---------------------------------------------------------------
+# Step 7: syscall_event_bridge.c — use static_branch_unlikely
+# ---------------------------------------------------------------
+echo "[7/7] Patching syscall_event_bridge.c — use static_branch_unlikely"
+SYSCALL_BRIDGE="$KSUN_DIR/hook/syscall_event_bridge.c"
+if grep -q "!ksu_su_compat_enabled" "$SYSCALL_BRIDGE" 2>/dev/null; then
+  perl -i -0777 -pe '
+    s/if \(!ksu_su_compat_enabled\)/if (!static_branch_unlikely(\&ksu_su_compat_enabled))/g;
+    s/\} else if \(ksu_su_compat_enabled\)/\} else if (static_branch_unlikely(\&ksu_su_compat_enabled))/g;
+  ' "$SYSCALL_BRIDGE"
+  echo "  ✓ syscall_event_bridge.c patched"
+else
+  echo "  ✓ already patched or not found, skipping"
+fi
+
 echo ""
 echo "=== KSUN SUSFS Integration complete ==="
 echo "Patched files:"
@@ -191,5 +208,6 @@ echo "  $SELINUX_C"
 echo "  $SUCOMPAT_C"
 echo "  $SUCOMPAT_H"
 echo "  $KBUILD"
+echo "  $SYSCALL_BRIDGE"
 echo "Created:"
 echo "  $INTEGRATION_DST"
