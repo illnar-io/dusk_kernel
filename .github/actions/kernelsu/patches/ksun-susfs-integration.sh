@@ -12,6 +12,7 @@
 #   1. Removes `static` from 6 variables in selinux_hide.c + adds EXPORT_SYMBOL
 #   2. Adds susfs_ksu_sid / susfs_priv_app_sid declarations to selinux.c
 #   3. Changes `bool ksu_su_compat_enabled` → DEFINE_STATIC_KEY_TRUE in sucompat.c
+#      and updates su_compat_feature_get/set to use static_branch_* calls
 #   4. Updates sucompat.h extern to match
 #   5. Copies susfs_integration.c into the KSUN tree
 #   6. Adds susfs_integration.o to Kbuild under CONFIG_KSU_SUSFS guard
@@ -106,9 +107,17 @@ fi
 echo "[3/6] Patching sucompat.c — bool → static_key_true"
 if grep -q "^bool ksu_su_compat_enabled" "$SUCOMPAT_C" 2>/dev/null; then
   perl -i -0777 -pe '
-    s/^bool ksu_su_compat_enabled __read_mostly = false;/DEFINE_STATIC_KEY_TRUE(ksu_su_compat_enabled);\nEXPORT_SYMBOL(ksu_su_compat_enabled);/gm;
+    # 3a. Definition: bool → DEFINE_STATIC_KEY_TRUE + EXPORT_SYMBOL
+    s/^bool ksu_su_compat_enabled __read_mostly = (?:true|false);/DEFINE_STATIC_KEY_TRUE(ksu_su_compat_enabled);\nEXPORT_SYMBOL(ksu_su_compat_enabled);/gm;
+
+    # 3b. su_compat_feature_get: bool ternary → static_branch_unlikely
+    s/\*value = ksu_su_compat_enabled \? 1 : 0;/*value = static_branch_unlikely(\&ksu_su_compat_enabled) ? 1 : 0;/g;
+
+    # 3c. su_compat_feature_set: bool assignment → static_branch_enable/disable
+    s/bool enable = value != 0;\n\tksu_su_compat_enabled = enable;/if (value)\n\t\tstatic_branch_enable(\&ksu_su_compat_enabled);\n\telse\n\t\tstatic_branch_disable(\&ksu_su_compat_enabled);/g;
   ' "$SUCOMPAT_C"
   echo "  ✓ ksu_su_compat_enabled changed to static_key_true"
+  echo "  ✓ su_compat_feature_get/set uses updated"
 else
   echo "  ✓ pattern not found (may already be changed), checking..."
   if grep -q "DEFINE_STATIC_KEY_TRUE.*ksu_su_compat_enabled" "$SUCOMPAT_C" 2>/dev/null; then
@@ -119,6 +128,14 @@ else
         s/(DEFINE_STATIC_KEY_TRUE\(ksu_su_compat_enabled\);\n)/${1}EXPORT_SYMBOL(ksu_su_compat_enabled);\n/gm;
       ' "$SUCOMPAT_C"
       echo "  ✓ added missing EXPORT_SYMBOL"
+    fi
+    # Still verify the uses are updated
+    if grep -q "ksu_su_compat_enabled ? 1 : 0" "$SUCOMPAT_C" 2>/dev/null; then
+      perl -i -0777 -pe '
+        s/\*value = ksu_su_compat_enabled \? 1 : 0;/*value = static_branch_unlikely(\&ksu_su_compat_enabled) ? 1 : 0;/g;
+        s/bool enable = value != 0;\n\tksu_su_compat_enabled = enable;/if (value)\n\t\tstatic_branch_enable(\&ksu_su_compat_enabled);\n\telse\n\t\tstatic_branch_disable(\&ksu_su_compat_enabled);/g;
+      ' "$SUCOMPAT_C"
+      echo "  ✓ su_compat_feature_get/set uses updated"
     fi
   fi
 fi

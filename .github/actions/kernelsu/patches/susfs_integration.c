@@ -34,10 +34,13 @@ DEFINE_STATIC_KEY_FALSE(susfs_is_sdcard_android_data_not_decrypted);
 EXPORT_SYMBOL(susfs_is_sdcard_android_data_not_decrypted);
 
 /* ---------------------------------------------------------------
- * ksu_handle_input_handle_event - export for SUSFS reference
- * Defined in selinux_hide.c (made non-static by static.patch)
+ * ksu_handle_input_handle_event - input event hook (SUSFS)
+ * KSUN 0608dfd7 does not define this; provide as a stub.
  * --------------------------------------------------------------- */
-extern int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code, int *value);
+int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code, int *value)
+{
+	return 0;
+}
 EXPORT_SYMBOL(ksu_handle_input_handle_event);
 
 /* ---------------------------------------------------------------
