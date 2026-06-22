@@ -31,9 +31,6 @@ EXPORT_SYMBOL(ksu_is_input_hook_enabled);
 DEFINE_STATIC_KEY_TRUE(ksu_is_init_rc_hook_enabled);
 EXPORT_SYMBOL(ksu_is_init_rc_hook_enabled);
 
-DEFINE_STATIC_KEY_FALSE(susfs_is_sdcard_android_data_not_decrypted);
-EXPORT_SYMBOL(susfs_is_sdcard_android_data_not_decrypted);
-
 /* ---------------------------------------------------------------
  * ksu_handle_input_handle_event - input event hook (SUSFS)
  * KSUN 0608dfd7 does not define this; provide as a stub.
@@ -43,15 +40,6 @@ int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code, int *v
 	return 0;
 }
 EXPORT_SYMBOL(ksu_handle_input_handle_event);
-
-/* ---------------------------------------------------------------
- * ksu_handle_setresuid - stub hook for setresuid
- * --------------------------------------------------------------- */
-int ksu_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid)
-{
-	return 0;
-}
-EXPORT_SYMBOL(ksu_handle_setresuid);
 
 /* ---------------------------------------------------------------
  * ksu_handle_execveat - init/zygote exec hook (50_add in fs/exec.c)
@@ -164,18 +152,6 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
 	return 0;
 }
 EXPORT_SYMBOL(ksu_handle_sys_reboot);
-
-/* ---------------------------------------------------------------
- * __ksu_is_allow_uid_for_current - check if current UID is allowed root
- * Called from SUSFS to skip hiding for root-granted processes
- * --------------------------------------------------------------- */
-extern bool ksu_is_allow_uid(uid_t uid);
-
-bool __ksu_is_allow_uid_for_current(void)
-{
-	return ksu_is_allow_uid(current_uid().val);
-}
-EXPORT_SYMBOL(__ksu_is_allow_uid_for_current);
 
 /* ---------------------------------------------------------------
  * susfs_is_current_ksu_domain - check if current task is KSU domain
