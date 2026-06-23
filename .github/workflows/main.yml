@@ -277,15 +277,15 @@ jobs:
 
         ROOT="${{ inputs.root }}"
         SUSFS="${{ inputs.susfs }}"
-        KSUN_COMMIT="5a4a718"
+        KSUN_COMMIT="7bce6ea5"
         KSUN_TAG="stable"
         KSU_COMMIT="main"
         SKSU_COMMIT="builtin"
         AK3_COMMIT="gki-2.0"
         PATCHES_COMMIT="main"
-        SUSFS_MAP="gki-android12-5.10:e2b0f05ccca5f8fdfc33991c036672235ce48f05,gki-android13-5.10:97234f8e35cdc3b8ea22d05c98ab9829f6421d67,gki-android13-5.15:bf9bf0091bcd4d0072d845ea62484f3011f8d5a8,gki-android14-5.15:667368cf274311a62971671035738b154be1c062,gki-6.1:9bf72ec2c83d40f194b936cabbc64ce342e005bf,gki-6.6:5009b9edee98fbe66b1a3cb22c603690d81b7817,gki-6.12:5c34dec2c3b69af1d72ac4a89b179741fc602a79"
+        SUSFS_MAP="gki-android12-5.10:4003ecf2d01c6d13fa8edf6c4f2607365738dc3d,gki-android13-5.10:28619f1263fd58bc1376b8d546bc8dbc56250d78,gki-android13-5.15:65ea8683c794cc309c3b0c4e6b57c1d972ca9a76,gki-android14-5.15:31afcfd088f59967bf9d07597a8af5d916d123dd,gki-6.1:52eaf3b8fa50207af2ce4f78d73729dc9e1303ea,gki-6.6:a8c720c42ca46fca13179280b13aa13c9fbe1562,gki-6.12:72bdce7ce2de8189efb227c6cefbc578a9efd479"
         BBG_COMMIT="main"
-        SUSFS_VERSION="v2.1.0"
+        SUSFS_VERSION="v2.2.0"
         : > release_body.md
 
         {
@@ -376,11 +376,11 @@ jobs:
         set -e
 
         ROOT="${{ inputs.root }}"
-        KSUN_COMMIT="5a4a718"
+        KSUN_COMMIT="7bce6ea5"
         KSUN_TAG="stable"
         AK3_COMMIT="gki-2.0"
         PATCHES_COMMIT="main"
-        SUSFS_MAP="gki-android12-5.10:e2b0f05ccca5f8fdfc33991c036672235ce48f05,gki-android13-5.10:97234f8e35cdc3b8ea22d05c98ab9829f6421d67,gki-android13-5.15:bf9bf0091bcd4d0072d845ea62484f3011f8d5a8,gki-android14-5.15:667368cf274311a62971671035738b154be1c062,gki-6.1:9bf72ec2c83d40f194b936cabbc64ce342e005bf,gki-6.6:5009b9edee98fbe66b1a3cb22c603690d81b7817,gki-6.12:5c34dec2c3b69af1d72ac4a89b179741fc602a79"
+        SUSFS_MAP="gki-android12-5.10:4003ecf2d01c6d13fa8edf6c4f2607365738dc3d,gki-android13-5.10:28619f1263fd58bc1376b8d546bc8dbc56250d78,gki-android13-5.15:65ea8683c794cc309c3b0c4e6b57c1d972ca9a76,gki-android14-5.15:31afcfd088f59967bf9d07597a8af5d916d123dd,gki-6.1:52eaf3b8fa50207af2ce4f78d73729dc9e1303ea,gki-6.6:a8c720c42ca46fca13179280b13aa13c9fbe1562,gki-6.12:72bdce7ce2de8189efb227c6cefbc578a9efd479"
         BBG_COMMIT="main"
 
         short() { echo "${1:0:8}"; }

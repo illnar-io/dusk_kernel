@@ -19,7 +19,7 @@ jobs:
       - name: Check KernelSU-Next (dev branch)
         id: ksu
         run: |
-          PINNED="30802e7260e2387176b9301377e88fc6fb0356b7"
+          PINNED="7bce6ea5e67d2f0cc380a8af13f165c9de3df55d"
           LATEST=$(git ls-remote https://github.com/KernelSU-Next/KernelSU-Next.git refs/heads/dev | awk '{print $1}')
           echo "pinned=$PINNED" >> $GITHUB_OUTPUT
           echo "latest=$LATEST" >> $GITHUB_OUTPUT
@@ -28,7 +28,7 @@ jobs:
       - name: Check SUSFS (android12-5.10)
         id: susfs_a12_5_10
         run: |
-          PINNED="e2b0f05ccca5f8fdfc33991c036672235ce48f05"
+          PINNED="4003ecf2d01c6d13fa8edf6c4f2607365738dc3d"
           LATEST=$(git ls-remote https://gitlab.com/simonpunk/susfs4ksu.git refs/heads/gki-android12-5.10 | awk '{print $1}')
           echo "pinned=$PINNED" >> $GITHUB_OUTPUT; echo "latest=$LATEST" >> $GITHUB_OUTPUT
           [ "$PINNED" != "$LATEST" ] && [ -n "$LATEST" ] && echo "updated=true" >> $GITHUB_OUTPUT || echo "updated=false" >> $GITHUB_OUTPUT
@@ -36,7 +36,7 @@ jobs:
       - name: Check SUSFS (android13-5.10)
         id: susfs_a13_5_10
         run: |
-          PINNED="97234f8e35cdc3b8ea22d05c98ab9829f6421d67"
+          PINNED="28619f1263fd58bc1376b8d546bc8dbc56250d78"
           LATEST=$(git ls-remote https://gitlab.com/simonpunk/susfs4ksu.git refs/heads/gki-android13-5.10 | awk '{print $1}')
           echo "pinned=$PINNED" >> $GITHUB_OUTPUT; echo "latest=$LATEST" >> $GITHUB_OUTPUT
           [ "$PINNED" != "$LATEST" ] && [ -n "$LATEST" ] && echo "updated=true" >> $GITHUB_OUTPUT || echo "updated=false" >> $GITHUB_OUTPUT
@@ -44,7 +44,7 @@ jobs:
       - name: Check SUSFS (android13-5.15)
         id: susfs_a13_5_15
         run: |
-          PINNED="bf9bf0091bcd4d0072d845ea62484f3011f8d5a8"
+          PINNED="65ea8683c794cc309c3b0c4e6b57c1d972ca9a76"
           LATEST=$(git ls-remote https://gitlab.com/simonpunk/susfs4ksu.git refs/heads/gki-android13-5.15 | awk '{print $1}')
           echo "pinned=$PINNED" >> $GITHUB_OUTPUT; echo "latest=$LATEST" >> $GITHUB_OUTPUT
           [ "$PINNED" != "$LATEST" ] && [ -n "$LATEST" ] && echo "updated=true" >> $GITHUB_OUTPUT || echo "updated=false" >> $GITHUB_OUTPUT
@@ -52,7 +52,7 @@ jobs:
       - name: Check SUSFS (android14-5.15)
         id: susfs_a14_5_15
         run: |
-          PINNED="667368cf274311a62971671035738b154be1c062"
+          PINNED="31afcfd088f59967bf9d07597a8af5d916d123dd"
           LATEST=$(git ls-remote https://gitlab.com/simonpunk/susfs4ksu.git refs/heads/gki-android14-5.15 | awk '{print $1}')
           echo "pinned=$PINNED" >> $GITHUB_OUTPUT; echo "latest=$LATEST" >> $GITHUB_OUTPUT
           [ "$PINNED" != "$LATEST" ] && [ -n "$LATEST" ] && echo "updated=true" >> $GITHUB_OUTPUT || echo "updated=false" >> $GITHUB_OUTPUT
@@ -60,7 +60,7 @@ jobs:
       - name: Check SUSFS (android14-6.1)
         id: susfs_a14_6_1
         run: |
-          PINNED="ab4c23cfc7cb26821abb7a9d2071206713c070fe"
+          PINNED="52eaf3b8fa50207af2ce4f78d73729dc9e1303ea"
           LATEST=$(git ls-remote https://gitlab.com/simonpunk/susfs4ksu.git refs/heads/gki-android14-6.1 | awk '{print $1}')
           echo "pinned=$PINNED" >> $GITHUB_OUTPUT; echo "latest=$LATEST" >> $GITHUB_OUTPUT
           [ "$PINNED" != "$LATEST" ] && [ -n "$LATEST" ] && echo "updated=true" >> $GITHUB_OUTPUT || echo "updated=false" >> $GITHUB_OUTPUT
@@ -68,7 +68,7 @@ jobs:
       - name: Check SUSFS (android15-6.6)
         id: susfs_a15_6_6
         run: |
-          PINNED="5009b9edee98fbe66b1a3cb22c603690d81b7817"
+          PINNED="a8c720c42ca46fca13179280b13aa13c9fbe1562"
           LATEST=$(git ls-remote https://gitlab.com/simonpunk/susfs4ksu.git refs/heads/gki-android15-6.6 | awk '{print $1}')
           echo "pinned=$PINNED" >> $GITHUB_OUTPUT; echo "latest=$LATEST" >> $GITHUB_OUTPUT
           [ "$PINNED" != "$LATEST" ] && [ -n "$LATEST" ] && echo "updated=true" >> $GITHUB_OUTPUT || echo "updated=false" >> $GITHUB_OUTPUT
@@ -76,7 +76,7 @@ jobs:
       - name: Check SUSFS (android16-6.12)
         id: susfs_a16_6_12
         run: |
-          PINNED="5c34dec2c3b69af1d72ac4a89b179741fc602a79"
+          PINNED="72bdce7ce2de8189efb227c6cefbc578a9efd479"
           LATEST=$(git ls-remote https://gitlab.com/simonpunk/susfs4ksu.git refs/heads/gki-android16-6.12 | awk '{print $1}')
           echo "pinned=$PINNED" >> $GITHUB_OUTPUT; echo "latest=$LATEST" >> $GITHUB_OUTPUT
           [ "$PINNED" != "$LATEST" ] && [ -n "$LATEST" ] && echo "updated=true" >> $GITHUB_OUTPUT || echo "updated=false" >> $GITHUB_OUTPUT
