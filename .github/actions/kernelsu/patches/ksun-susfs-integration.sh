@@ -175,6 +175,62 @@ else
   echo "  ✓ already patched or not found, skipping"
 fi
 
+# ---------------------------------------------------------------
+# Step 7: supercall/dispatch.c — report "Hybrid" hook mode with SUSFS
+# ---------------------------------------------------------------
+echo "[7/7] Patching do_get_hook_mode in dispatch.c — Hybrid when SUSFS+y"
+DISPATCH_C="$KSUN_DIR/supercall/dispatch.c"
+if grep -q '#ifdef CONFIG_HAVE_SYSCALL_TRACEPOINTS' "$DISPATCH_C" 2>/dev/null; then
+  perl -i -0777 -pe '
+    s{
+      static int do_get_hook_mode.*?\n
+      \{\n
+        \s*struct ksu_get_hook_mode_cmd cmd = \{0\};\n
+        \s*\n
+        \s*\#ifdef CONFIG_HAVE_SYSCALL_TRACEPOINTS\n
+        \s*strscpy\(cmd\.mode, "Tracepoint", sizeof\(cmd\.mode\)\);\n
+        \s*\#else\n
+        \s*strscpy\(cmd\.mode, "Kprobes", sizeof\(cmd\.mode\)\);\n
+        \s*\#endif\n
+        \s*\n
+        \s*if \(copy_to_user\(arg, &cmd, sizeof\(cmd\)\)\) \{\n
+        \s*pr_err\("get_hook_mode: copy_to_user failed\\n"\);\n
+        \s*return -EFAULT;\n
+        \s*\}\n
+        \s*\n
+        \s*return 0;\n
+      \}
+    }{
+static int do_get_hook_mode(void __user *arg)
+{
+	struct ksu_get_hook_mode_cmd cmd = {0};
+
+#ifndef CONFIG_KSU_SUSFS
+#ifdef CONFIG_HAVE_SYSCALL_TRACEPOINTS
+	strscpy(cmd.mode, "Tracepoint", sizeof(cmd.mode));
+#else
+	strscpy(cmd.mode, "Kprobes", sizeof(cmd.mode));
+#endif
+#elif defined(CONFIG_HAVE_SYSCALL_TRACEPOINTS) || defined(CONFIG_KPROBES)
+	strscpy(cmd.mode, "Hybrid", sizeof(cmd.mode));
+#else
+	strscpy(cmd.mode, "Inline", sizeof(cmd.mode));
+#endif
+
+	if (copy_to_user(arg, &cmd, sizeof(cmd))) {
+		pr_err("get_hook_mode: copy_to_user failed\n");
+		return -EFAULT;
+	}
+
+	return 0;
+}
+    }xms;
+  ' "$DISPATCH_C"
+  echo "  ✓ dispatch.c hook mode patched (Hybrid when SUSFS)"
+else
+  echo "  ✓ already patched or pattern not found, skipping"
+fi
+
 echo ""
 echo "=== KSUN SUSFS Integration complete ==="
 echo "Patched files:"
