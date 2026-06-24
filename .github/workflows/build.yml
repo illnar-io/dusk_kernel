@@ -41,7 +41,7 @@ jobs:
         kernel_version: ${{ inputs.kernel_version }}
 
     - name: Free Disk Space
-      if: false
+      if: true
       uses: endersonmenezes/free-disk-space@v3
       with:
         remove_android: true
