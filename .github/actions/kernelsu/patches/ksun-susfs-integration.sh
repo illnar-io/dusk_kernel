@@ -202,7 +202,7 @@ static int do_get_hook_mode(void __user *arg)
 #endif
 
 	if (copy_to_user(arg, &cmd, sizeof(cmd))) {
-		pr_err("get_hook_mode: copy_to_user failed\n");
+		pr_err("get_hook_mode: copy_to_user failed\\n");
 		return -EFAULT;
 	}
 
