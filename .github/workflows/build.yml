@@ -283,6 +283,25 @@ jobs:
         fi
         echo "=== End KSU verification ==="
 
+        # ----------------------------------------------------------------
+        # Step 3: Verify dispatch.c hook mode was patched correctly by
+        # the integration script (Step 7) — both copies should contain
+        # "Hybrid" after Steps 1-2 copy from KSUN source.
+        # ----------------------------------------------------------------
+        echo "→ Verifying dispatch.c hook mode in both copies ..."
+        for dispatch in \
+          "$DRIVER_DIR/kernelsu/supercall/dispatch.c" \
+          "$SEC_DIR/ksu/supercall/dispatch.c"; do
+          if [ -f "$dispatch" ] && grep -q 'Hybrid' "$dispatch" 2>/dev/null; then
+            echo "  ✓ $dispatch has Hybrid mode"
+          elif [ -f "$dispatch" ] && grep -q 'Tracepoint' "$dispatch" 2>/dev/null; then
+            echo "  ⚠ $dispatch still has Tracepoint — integration script regex failed"
+            exit 1
+          else
+            echo "  — $dispatch not found or unreadable"
+          fi
+        done
+
     - name: Commit all kernel source modifications
       shell: bash
       run: |
