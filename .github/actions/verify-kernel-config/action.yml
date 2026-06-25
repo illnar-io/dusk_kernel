@@ -42,64 +42,48 @@ runs:
           REQUIRED_OPTIONS+=("CONFIG_NTSYNC=y")
         fi
 
-        # Try to locate the generated .config — search common Bazel/build paths
-        CONFIG=""
-        SEARCH_PATHS=(
-          "${{ github.workspace }}/kernel/bazel-bin/common/kernel_aarch64/.config"
-          "${{ github.workspace }}/kernel/out/${ANDROID_VERSION}-${KERNEL_VERSION}/.config"
-          "${{ github.workspace }}/kernel/.config"
-        )
+        # Bazel builds generate .config inside its sandbox — inaccessible after
+        # build.  Instead, verify the fragment file we feed into the build.
+        # The fragment is the source of truth for what we add on top of the
+        # stock GKI defconfig.  If a required option is missing here, the
+        # built kernel will lack it.
+        FRAGMENT="${{ github.workspace }}/wild_gki.fragment"
 
-        for CANDIDATE in "${SEARCH_PATHS[@]}"; do
-          if [ -f "$CANDIDATE" ]; then
-            CONFIG="$CANDIDATE"
-            break
-          fi
-        done
-
-        # Fallback: recursively search bazel-bin for any .config
-        if [ -z "$CONFIG" ]; then
-          CONFIG=$(find "${{ github.workspace }}/kernel/bazel-bin" -name '.config' -path '*/kernel_*/*' 2>/dev/null | head -1)
-        fi
-
-        if [ -z "$CONFIG" ]; then
-          echo "❌ Could not find generated .config in any expected location!"
-          echo "   Searched:"
-          for p in "${SEARCH_PATHS[@]}"; do echo "     - $p"; done
-          echo "     - ${{ github.workspace }}/kernel/bazel-bin/**/kernel_*/.config (recursive)"
-          echo ""
-          echo "   Without .config verification, missing container configs will not be caught."
-          echo "   The kernel may lack CGROUP_DEVICE, CGROUP_PIDS, or other required options."
-          echo "::error::Kernel config verification failed — .config not found"
+        if [ ! -f "$FRAGMENT" ]; then
+          echo "::error::wild_gki.fragment not found at $FRAGMENT"
           exit 1
         fi
 
-        echo "Verifying config: $CONFIG"
+        echo "Verifying fragment: $FRAGMENT"
+        echo "Fragment contents ($(wc -l < "$FRAGMENT") lines):"
+        grep '^CONFIG_' "$FRAGMENT" | sed 's/^/  /'
+        echo ""
+
         FAILED=false
 
         for OPT in "${REQUIRED_OPTIONS[@]}"; do
           NAME="${OPT%%=*}"
           VALUE="${OPT#*=}"
 
-          if grep -q "^${NAME}=${VALUE}" "$CONFIG" 2>/dev/null; then
+          if grep -q "^${NAME}=${VALUE}" "$FRAGMENT" 2>/dev/null; then
             echo "  ✅ ${OPT}"
-          elif grep -q "^${NAME}=m" "$CONFIG" 2>/dev/null; then
-            echo "  ⚠ ${NAME}=m  (expected =y, módulo is acceptable)"
+          elif grep -q "^${NAME}=m" "$FRAGMENT" 2>/dev/null; then
+            echo "  ⚠ ${NAME}=m  (expected =y, module is acceptable)"
           else
-            RAW=$(grep "^${NAME}=" "$CONFIG" 2>/dev/null || grep "^# ${NAME} is not set" "$CONFIG" 2>/dev/null || echo "NOT FOUND")
-            echo "  ❌ ${OPT}  — current: ${RAW}"
+            echo "  ❌ ${OPT}  — MISSING from fragment"
             FAILED=true
           fi
         done
 
         if [ "$FAILED" = "true" ]; then
           echo ""
-          echo "❌ One or more required kernel configs are missing!"
-          echo "   The built kernel may not support Droidspaces containers."
-          echo "   Check the config fragment at: ${{ github.workspace }}/wild_gki.fragment"
-          echo "   Or check Kconfig existence in the kernel source."
+          echo "❌ One or more required kernel configs are missing from wild_gki.fragment!"
+          echo "   The built kernel will not support Droidspaces containers."
+          echo "   Add the missing options to .github/actions/misc/action.yml or"
+          echo "   .github/actions/droidspaces/action.yml fragment blocks."
           exit 1
         else
           echo ""
-          echo "✅ All required kernel configs are present"
+          echo "✅ All required container configs present in fragment"
+          echo "   (on-device verification recommended after flash)"
         fi
