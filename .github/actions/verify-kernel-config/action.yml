@@ -42,22 +42,36 @@ runs:
           REQUIRED_OPTIONS+=("CONFIG_NTSYNC=y")
         fi
 
-        # Try to locate the generated .config
+        # Try to locate the generated .config — search common Bazel/build paths
         CONFIG=""
-        BAZEL_CONFIG="${{ github.workspace }}/kernel/bazel-bin/common/kernel_aarch64/.config"
-        BUILD_SH_CONFIG="${{ github.workspace }}/kernel/out/${ANDROID_VERSION}-${KERNEL_VERSION}/.config"
+        SEARCH_PATHS=(
+          "${{ github.workspace }}/kernel/bazel-bin/common/kernel_aarch64/.config"
+          "${{ github.workspace }}/kernel/out/${ANDROID_VERSION}-${KERNEL_VERSION}/.config"
+          "${{ github.workspace }}/kernel/.config"
+        )
 
-        if [ -f "$BAZEL_CONFIG" ]; then
-          CONFIG="$BAZEL_CONFIG"
-        elif [ -f "$BUILD_SH_CONFIG" ]; then
-          CONFIG="$BUILD_SH_CONFIG"
-        elif [ -f "${{ github.workspace }}/kernel/.config" ]; then
-          CONFIG="${{ github.workspace }}/kernel/.config"
+        for CANDIDATE in "${SEARCH_PATHS[@]}"; do
+          if [ -f "$CANDIDATE" ]; then
+            CONFIG="$CANDIDATE"
+            break
+          fi
+        done
+
+        # Fallback: recursively search bazel-bin for any .config
+        if [ -z "$CONFIG" ]; then
+          CONFIG=$(find "${{ github.workspace }}/kernel/bazel-bin" -name '.config' -path '*/kernel_*/*' 2>/dev/null | head -1)
         fi
 
         if [ -z "$CONFIG" ]; then
-          echo "::warning::Could not find generated .config — skipping verification"
-          exit 0
+          echo "❌ Could not find generated .config in any expected location!"
+          echo "   Searched:"
+          for p in "${SEARCH_PATHS[@]}"; do echo "     - $p"; done
+          echo "     - ${{ github.workspace }}/kernel/bazel-bin/**/kernel_*/.config (recursive)"
+          echo ""
+          echo "   Without .config verification, missing container configs will not be caught."
+          echo "   The kernel may lack CGROUP_DEVICE, CGROUP_PIDS, or other required options."
+          echo "::error::Kernel config verification failed — .config not found"
+          exit 1
         fi
 
         echo "Verifying config: $CONFIG"
