@@ -58,9 +58,9 @@ runs:
         CONFIG_CGROUP_DEVICE=y
         CONFIG_CGROUP_PIDS=y
 
-        # Timer frequency 300 Hz (better desktop responsiveness)
-        CONFIG_HZ_300=y
-        CONFIG_HZ=300
+        # Timer frequency: keep GKI default (1000 Hz)
+        # HZ_300 was cherry-picked from GKI-Duchamp but causes
+        # early boot hangs on Pixel 6 due to driver timing assumptions
         EOF
 
         # User Namespaces (required for Droidspaces, containers, and ntsync)

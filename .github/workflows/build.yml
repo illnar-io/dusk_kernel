@@ -202,8 +202,6 @@ jobs:
         check_cfg "CONFIG_DEVTMPFS=y"
         check_cfg "CONFIG_OVERLAY_FS=y"
         # Performance
-        check_cfg "CONFIG_HZ_300=y"
-        check_cfg "CONFIG_HZ=300"
         # Networking
         check_cfg "CONFIG_TCP_CONG_BBR=y"
         check_cfg "CONFIG_NET_ACT_CONNMARK=y"
@@ -496,7 +494,7 @@ jobs:
             echo "--- $variant ---"
             echo "  .config size: $(wc -l < "$CONFIG_FILE") lines"
             # Dump only DUSK-relevant configs
-            for cfg in SYSVIPC UTS_NS NET_NS IPC_NS PID_NS USER_NS VETH BINFMT_MISC BINFMT_SCRIPT BINFMT_ELF DEVTMPFS OVERLAY_FS HZ_300 HZ TCP_CONG_BBR NET_ACT_CONNMARK NET_SCH_CAKE DEFAULT_TCP_CONG MGLRU ZRAM BCACHE CONFIG_ZRAM_DEF_COMP CONFIG_ZRAM_MULTI_COMP KALLSYMS NAMESPACES MEMCG CGROUP_SCHED; do
+            for cfg in SYSVIPC UTS_NS NET_NS IPC_NS PID_NS USER_NS VETH BINFMT_MISC BINFMT_SCRIPT BINFMT_ELF DEVTMPFS OVERLAY_FS TCP_CONG_BBR NET_ACT_CONNMARK NET_SCH_CAKE DEFAULT_TCP_CONG MGLRU ZRAM BCACHE CONFIG_ZRAM_DEF_COMP CONFIG_ZRAM_MULTI_COMP KALLSYMS NAMESPACES MEMCG CGROUP_SCHED; do
               val=$(grep -E "^CONFIG_${cfg}[= ]" "$CONFIG_FILE" 2>/dev/null | head -1)
               if [ -n "$val" ]; then
                 echo "  $val"
