@@ -61,15 +61,6 @@ runs:
         # Timer frequency 300 Hz (better desktop responsiveness)
         CONFIG_HZ_300=y
         CONFIG_HZ=300
-
-        # Compiler optimizations
-        CONFIG_OPTIMIZE_INLINING=y
-
-        # Disable debug options
-        CONFIG_UBSAN=n
-        CONFIG_PAGE_OWNER=n
-        CONFIG_RCU_TRACE=n
-        CONFIG_FRAME_WARN=0
         EOF
 
         # User Namespaces (required for Droidspaces, containers, and ntsync)

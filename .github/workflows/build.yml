@@ -204,17 +204,11 @@ jobs:
         # Performance
         check_cfg "CONFIG_HZ_300=y"
         check_cfg "CONFIG_HZ=300"
-        check_cfg "CONFIG_OPTIMIZE_INLINING=y"
         # Networking
         check_cfg "CONFIG_TCP_CONG_BBR=y"
         check_cfg "CONFIG_NET_ACT_CONNMARK=y"
         check_cfg "CONFIG_NET_SCH_CAKE=y"
         check_cfg "CONFIG_DEFAULT_TCP_CONG=\"bbr\""
-        # Debug options disabled
-        check_cfg "CONFIG_UBSAN=n"
-        check_cfg "CONFIG_PAGE_OWNER=n"
-        check_cfg "CONFIG_RCU_TRACE=n"
-        check_cfg "CONFIG_FRAME_WARN=0"
         echo ""
         echo "  PASS: $PASS  |  FAIL: $FAIL"
         if [ "$FAIL" -gt 0 ]; then
@@ -502,7 +496,7 @@ jobs:
             echo "--- $variant ---"
             echo "  .config size: $(wc -l < "$CONFIG_FILE") lines"
             # Dump only DUSK-relevant configs
-            for cfg in SYSVIPC UTS_NS NET_NS IPC_NS PID_NS USER_NS VETH BINFMT_MISC BINFMT_SCRIPT BINFMT_ELF DEVTMPFS OVERLAY_FS HZ_300 HZ OPTIMIZE_INLINING TCP_CONG_BBR NET_ACT_CONNMARK NET_SCH_CAKE DEFAULT_TCP_CONG UBSAN PAGE_OWNER RCU_TRACE FRAME_WARN MGLRU ZRAM BCACHE CONFIG_ZRAM_DEF_COMP CONFIG_ZRAM_MULTI_COMP KALLSYMS NAMESPACES MEMCG CGROUP_SCHED; do
+            for cfg in SYSVIPC UTS_NS NET_NS IPC_NS PID_NS USER_NS VETH BINFMT_MISC BINFMT_SCRIPT BINFMT_ELF DEVTMPFS OVERLAY_FS HZ_300 HZ TCP_CONG_BBR NET_ACT_CONNMARK NET_SCH_CAKE DEFAULT_TCP_CONG MGLRU ZRAM BCACHE CONFIG_ZRAM_DEF_COMP CONFIG_ZRAM_MULTI_COMP KALLSYMS NAMESPACES MEMCG CGROUP_SCHED; do
               val=$(grep -E "^CONFIG_${cfg}[= ]" "$CONFIG_FILE" 2>/dev/null | head -1)
               if [ -n "$val" ]; then
                 echo "  $val"
