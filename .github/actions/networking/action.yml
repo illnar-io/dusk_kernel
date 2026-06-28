@@ -65,6 +65,8 @@ runs:
         CONFIG_DEFAULT_TCP_CONG="bbr"
         CONFIG_NET_SCH_FQ=y
         CONFIG_NET_SCH_FQ_CODEL=y
+        CONFIG_NET_ACT_CONNMARK=y
+        CONFIG_NET_SCH_CAKE=y
         EOF
 
     - name: Apply Kernel Config for 5.10

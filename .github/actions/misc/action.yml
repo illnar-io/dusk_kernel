@@ -48,6 +48,7 @@ runs:
 
         # Container/Droidspaces Support
         CONFIG_NAMESPACES=y
+        CONFIG_UTS_NS=y
         CONFIG_NET_NS=y
         CONFIG_VETH=y
         CONFIG_MEMCG=y
@@ -56,6 +57,19 @@ runs:
         CONFIG_CGROUP_CPUACCT=y
         CONFIG_CGROUP_DEVICE=y
         CONFIG_CGROUP_PIDS=y
+
+        # Timer frequency 300 Hz (better desktop responsiveness)
+        CONFIG_HZ_300=y
+        CONFIG_HZ=300
+
+        # Compiler optimizations
+        CONFIG_OPTIMIZE_INLINING=y
+
+        # Disable debug options
+        CONFIG_UBSAN=n
+        CONFIG_PAGE_OWNER=n
+        CONFIG_RCU_TRACE=n
+        CONFIG_FRAME_WARN=0
         EOF
 
         # User Namespaces (required for Droidspaces, containers, and ntsync)

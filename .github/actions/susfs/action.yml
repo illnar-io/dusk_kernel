@@ -270,38 +270,7 @@ runs:
           sed -i '/^#include <linux\/ksm.h>$/a #include <linux/susfs.h>' fs/exec.c
         fi
 
-    - name: Apply Kernel SUSFS Patches
-      shell: bash
-      working-directory: ${{ github.workspace }}/kernel/common
-      run: |
-        KSU_DIR="${KSU_DIR:-KernelSU}"
-        KSU_PARENT="${{ github.workspace }}/kernel"
-        SUSFS_IN_KSU=false
-        for candidate in KernelSU-Next KernelSU "$KSU_DIR"; do
-          ksu_path="$KSU_PARENT/$candidate"
-          if [ -f "$ksu_path/kernel/Kbuild" ] && grep -q "susfs" "$ksu_path/kernel/Kbuild" 2>/dev/null; then
-            SUSFS_IN_KSU=true
-            break
-          fi
-        done
-
-        # Always ensure susfs.o is linked
-        if ! grep -q "obj-\$.*susfs" fs/Makefile 2>/dev/null; then
-          echo "→ Adding obj-y += susfs.o to fs/Makefile"
-          echo "obj-y += susfs.o" >> fs/Makefile
-        fi
-
-        # Always apply the 50_add patch for VFS hooks (susfs needs these to
-        # intercept paths, mounts, kstat, etc. — the KSU module-level hooks
-        # alone are insufficient).
-        echo "→ Applying 50_add patch (VFS hooks)"
-        patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
-        # Verify the patch added the needed symbols
-        if ! grep -q "susfs_set_uname" fs/susfs.c 2>/dev/null && ! grep -q "susfs_set_uname" kernel/susfs.c 2>/dev/null; then
-          echo "⚠ WARNING: SUSFS functions not found after 50_add patch attempt - SUSFS will be unavailable" >&2
-        fi
-
-    - name: Fix missing SUSFS header includes
+    - name: Pre-inject SUSFS headers before 50_add patch
       shell: bash
       working-directory: ${{ github.workspace }}/kernel/common
       run: |
@@ -309,8 +278,9 @@ runs:
         # The 50_add patch adds #include <linux/susfs_def.h> to files like
         # fs/namespace.c, fs/proc/task_mmu.c, fs/open.c, etc. inside
         # #ifdef CONFIG_KSU_SUSFS guards. On newer GKI sublevels where the
-        # adjacent include context has shifted, the hunk can fail silently
-        # (patched with || true). Pre-inject the include where it's missing.
+        # adjacent include context has shifted, the hunk fails. Pre-inject
+        # the include into ALL target files so the 50_add patch can find
+        # the expected context.
         FILES_WITH_SUSFS_HOOKS="
           fs/exec.c
           fs/namei.c
@@ -338,21 +308,41 @@ runs:
           if [ ! -f "$FILE" ]; then
             continue
           fi
-          # Check if file references SUSFS symbols inside #ifdef guards
-          # but lacks the required include
-          if grep -q 'CONFIG_KSU_SUSFS' "$FILE" 2>/dev/null; then
-            if ! grep -q '#include.*linux/susfs' "$FILE" 2>/dev/null; then
-              echo "→ Adding #include <linux/susfs_def.h> to $FILE"
-              # Add the include inside an #ifdef CONFIG_KSU_SUSFS guard, just
-              # before the last #include in the file's include block.
-              LINE=$(grep -n '^#include' "$FILE" | tail -1 | cut -d: -f1)
-              if [ -n "$LINE" ]; then
-                printf '%s\n' '#ifdef CONFIG_KSU_SUSFS' '#include <linux/susfs_def.h>' '#endif' > /tmp/susfs_include.h
-                sed -i "${LINE}r /tmp/susfs_include.h" "$FILE"
-              fi
+          if ! grep -q '#include.*linux/susfs' "$FILE" 2>/dev/null; then
+            echo "→ Pre-injecting #include <linux/susfs_def.h> into $FILE"
+            LINE=$(grep -n '^#include' "$FILE" | tail -1 | cut -d: -f1)
+            if [ -n "$LINE" ]; then
+              printf '%s\n' '#ifdef CONFIG_KSU_SUSFS' '#include <linux/susfs_def.h>' '#endif' > /tmp/susfs_include.h
+              sed -i "${LINE}r /tmp/susfs_include.h" "$FILE"
             fi
           fi
         done
+
+    - name: Apply Kernel SUSFS Patches (50_add)
+      shell: bash
+      working-directory: ${{ github.workspace }}/kernel/common
+      run: |
+        set -euo pipefail
+
+        # Always ensure susfs.o is linked
+        if ! grep -q "obj-\$.*susfs" fs/Makefile 2>/dev/null; then
+          echo "→ Adding obj-y += susfs.o to fs/Makefile"
+          echo "obj-y += susfs.o" >> fs/Makefile
+        fi
+
+        # Apply the 50_add patch for VFS hooks (susfs needs these to
+        # intercept paths, mounts, kstat, etc. — the KSU module-level hooks
+        # alone are insufficient). Do NOT use || true — a failed patch
+        # means SUSFS will be silently missing from the built kernel.
+        echo "→ Applying 50_add patch (VFS hooks)"
+        patch -p1 --fuzz=3 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch
+
+        # Verify the patch added the needed symbols
+        if ! grep -q "susfs_set_uname" fs/susfs.c 2>/dev/null && ! grep -q "susfs_set_uname" kernel/susfs.c 2>/dev/null; then
+          echo "FATAL: SUSFS functions not found after 50_add patch — SUSFS will be unavailable" >&2
+          exit 1
+        fi
+        echo "✅ 50_add patch applied successfully"
 
     - name: Fix SUSFS undefined symbols
       shell: bash
@@ -491,7 +481,7 @@ runs:
         #  sed -i '/^#include <linux\/ksh.h>$/a #include <linux/dma-buf.h>' fs/exec.c
         #fi
 
-    - name: Apply Kernel SUSFS Patches
+    - name: Apply show_pad fix for older sublevels
       shell: bash
       if: true
       working-directory: ${{ github.workspace }}/kernel/common

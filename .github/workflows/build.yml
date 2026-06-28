@@ -160,6 +160,67 @@ jobs:
         kernel_version: ${{ steps.parse.outputs.kernel_version }}
         android_version: ${{ steps.parse.outputs.android_version }}
 
+    - name: Debug - Dump wild_gki.fragment
+      shell: bash
+      run: |
+        echo "============================================="
+        echo "  wild_gki.fragment FULL CONTENTS"
+        echo "============================================="
+        cat "${{ github.workspace }}/wild_gki.fragment" || echo "FRAGMENT NOT FOUND!"
+        echo ""
+        echo "============================================="
+        echo "  FRAGMENT LINE COUNT: $(wc -l < "${{ github.workspace }}/wild_gki.fragment" 2>/dev/null || echo 0)"
+        echo "============================================="
+        echo ""
+        echo "============================================="
+        echo "  EXPECTED DUSK CONFIGS VERIFICATION"
+        echo "============================================="
+        FRAG="${{ github.workspace }}/wild_gki.fragment"
+        PASS=0
+        FAIL=0
+        check_cfg() {
+          local cfg="$1"
+          if grep -q "$cfg" "$FRAG" 2>/dev/null; then
+            echo "  ✅ $cfg"
+            PASS=$((PASS + 1))
+          else
+            echo "  ❌ $cfg MISSING"
+            FAIL=$((FAIL + 1))
+          fi
+        }
+        # Container/Droidspaces
+        check_cfg "CONFIG_SYSVIPC=y"
+        check_cfg "CONFIG_UTS_NS=y"
+        check_cfg "CONFIG_NET_NS=y"
+        check_cfg "CONFIG_IPC_NS=y"
+        check_cfg "CONFIG_PID_NS=y"
+        check_cfg "CONFIG_USER_NS=y"
+        check_cfg "CONFIG_VETH=y"
+        check_cfg "CONFIG_BINFMT_MISC=y"
+        check_cfg "CONFIG_BINFMT_SCRIPT=y"
+        check_cfg "CONFIG_BINFMT_ELF=y"
+        check_cfg "CONFIG_DEVTMPFS=y"
+        check_cfg "CONFIG_OVERLAY_FS=y"
+        # Performance
+        check_cfg "CONFIG_HZ_300=y"
+        check_cfg "CONFIG_HZ=300"
+        check_cfg "CONFIG_OPTIMIZE_INLINING=y"
+        # Networking
+        check_cfg "CONFIG_TCP_CONG_BBR=y"
+        check_cfg "CONFIG_NET_ACT_CONNMARK=y"
+        check_cfg "CONFIG_NET_SCH_CAKE=y"
+        check_cfg "CONFIG_DEFAULT_TCP_CONG=\"bbr\""
+        # Debug options disabled
+        check_cfg "CONFIG_UBSAN=n"
+        check_cfg "CONFIG_PAGE_OWNER=n"
+        check_cfg "CONFIG_RCU_TRACE=n"
+        check_cfg "CONFIG_FRAME_WARN=0"
+        echo ""
+        echo "  PASS: $PASS  |  FAIL: $FAIL"
+        if [ "$FAIL" -gt 0 ]; then
+          echo "::warning::$FAIL expected configs missing from fragment"
+        fi
+
     - name: Phase 2 Patches
       uses: ./.github/actions/phase2-patches
       with:
@@ -428,6 +489,31 @@ jobs:
         SOURCE_DATE_EPOCH: ${{ env.SOURCE_DATE_EPOCH }}
         KBUILD_BUILD_TIMESTAMP: ${{ env.KBUILD_BUILD_TIMESTAMP }}
       uses: ./.github/actions/build-kernel
+
+    - name: Debug - Dump final .config
+      shell: bash
+      run: |
+        echo "============================================="
+        echo "  FINAL .config DUMP (built kernel)"
+        echo "============================================="
+        for variant in kernel_aarch64 out_oriole out_raven out_bluejay; do
+          CONFIG_FILE="${{ github.workspace }}/kernel/bazel-bin/common/$variant/.config"
+          if [ -f "$CONFIG_FILE" ]; then
+            echo "--- $variant ---"
+            echo "  .config size: $(wc -l < "$CONFIG_FILE") lines"
+            # Dump only DUSK-relevant configs
+            for cfg in SYSVIPC UTS_NS NET_NS IPC_NS PID_NS USER_NS VETH BINFMT_MISC BINFMT_SCRIPT BINFMT_ELF DEVTMPFS OVERLAY_FS HZ_300 HZ OPTIMIZE_INLINING TCP_CONG_BBR NET_ACT_CONNMARK NET_SCH_CAKE DEFAULT_TCP_CONG UBSAN PAGE_OWNER RCU_TRACE FRAME_WARN MGLRU ZRAM BCACHE CONFIG_ZRAM_DEF_COMP CONFIG_ZRAM_MULTI_COMP KALLSYMS NAMESPACES MEMCG CGROUP_SCHED; do
+              val=$(grep -E "^CONFIG_${cfg}[= ]" "$CONFIG_FILE" 2>/dev/null | head -1)
+              if [ -n "$val" ]; then
+                echo "  $val"
+              else
+                echo "  # CONFIG_${cfg} is not set"
+              fi
+            done
+            break
+          fi
+        done
+        echo "============================================="
 
     - name: Verify Kernel Config
       uses: ./.github/actions/verify-kernel-config

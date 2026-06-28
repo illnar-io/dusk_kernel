@@ -14,8 +14,20 @@ runs:
       run: |
         set -euo pipefail
         
+        # Select the correct patch based on kernel version and sublevel.
+        # The sublevel 162+ patch has different context (KABI_RESERVE moved
+        # to line 1553). Try the newer patch first for 6.1; fall back to the
+        # original for older sublevels.
         if [ "${{ inputs.kernel_version }}" = "6.12" ]; then
           PATCH_FILE="${{ github.workspace }}/kernel_patches/droidspaces/fix_sysvipc_kabi_a16-6.12.patch"
+        elif [ "${{ inputs.kernel_version }}" = "6.1" ]; then
+          PATCH_NEW="${{ github.workspace }}/kernel_patches/droidspaces/fix_sysvipc_kabi_6_1_162.patch"
+          PATCH_OLD="${{ github.workspace }}/kernel_patches/droidspaces/fix_sysvipc_kabi_6_7_8.patch"
+          if patch -p1 --dry-run < "$PATCH_NEW" 2>/dev/null; then
+            PATCH_FILE="$PATCH_NEW"
+          else
+            PATCH_FILE="$PATCH_OLD"
+          fi
         else
           PATCH_FILE="${{ github.workspace }}/kernel_patches/droidspaces/fix_sysvipc_kabi_6_7_8.patch"
         fi
@@ -23,9 +35,10 @@ runs:
         echo "Applying kABI fix from: $PATCH_FILE"
         if patch -p1 --dry-run < "$PATCH_FILE" 2>/dev/null; then
           patch -p1 < "$PATCH_FILE"
-          echo "Applied SYSVIPC kABI fix from local patch"
+          echo "✅ Applied SYSVIPC kABI fix from $(basename "$PATCH_FILE")"
         else
           echo "⚠ SYSVIPC kABI fix doesn't apply on this kernel version, skipping" >&2
+          echo "⚠ Droidspaces containers may not work without this fix!" >&2
         fi
 
     - name: Export IPC symbols for module linkage
@@ -69,6 +82,11 @@ runs:
 
         # HW Access Support
         CONFIG_DEVTMPFS=y
+
+        # Binary format support for containers
+        CONFIG_BINFMT_MISC=y
+        CONFIG_BINFMT_SCRIPT=y
+        CONFIG_BINFMT_ELF=y
 
         # Network namespace isolation for containers
         CONFIG_NET_NS=y
