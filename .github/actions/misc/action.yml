@@ -61,6 +61,10 @@ runs:
         # Timer frequency: keep GKI default (1000 Hz)
         # HZ_300 was cherry-picked from GKI-Duchamp but causes
         # early boot hangs on Pixel 6 due to driver timing assumptions
+
+        # Debug: enable serial console for early boot diagnostics
+        CONFIG_CMDLINE_EXTEND=y
+        CONFIG_CMDLINE="earlycon=msm_serial_dm,0x9a4000 console=ttyMSM0,115200n8"
         EOF
 
         # User Namespaces (required for Droidspaces, containers, and ntsync)
