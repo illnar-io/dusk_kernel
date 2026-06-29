@@ -290,7 +290,7 @@ runs:
         # succeeds. Allow hunk failures, then manually fix the missing
         # includes + extern declarations afterward.
         echo "→ Applying 50_add patch (VFS hooks)"
-        patch -p1 --fuzz=3 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
+        patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
 
         # --- Manually fix Hunk #1 failures (include + extern additions) ---
         # These files had their Hunk #1 fail because the include context
@@ -330,6 +330,7 @@ runs:
 
     - name: Fix missing SUSFS header includes
       shell: bash
+      if: ${{ inputs.kernel_version != '6.12' }}
       working-directory: ${{ github.workspace }}/kernel/common
       run: |
         set -euo pipefail
