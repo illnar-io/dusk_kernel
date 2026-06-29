@@ -227,6 +227,7 @@ jobs:
         sublevel: ${{ steps.extract.outputs.sublevel }}
 
     - name: External Source Patches (GKI-Duchamp, guacamole_sickness, Kirisakura)
+      if: false  # BISECT: disabled to test boot hang — Round 1
       uses: ./.github/actions/external-patches
       with:
         kernel_version: ${{ steps.parse.outputs.kernel_version }}
