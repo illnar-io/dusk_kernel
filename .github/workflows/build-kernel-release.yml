@@ -33,7 +33,7 @@ on:
       susfs_branch_or_commit:
         description: 'Enter SusFS Branch or commit hash for selected device kernel'
         type: string
-        default: ''
+        default: '698aa6a4ddca'
 
 jobs:
   set-op-model:
