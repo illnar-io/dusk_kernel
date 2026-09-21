@@ -77,7 +77,7 @@ on:
       android16-6_12_susfs_branch_or_commit:
         description: 'Enter SusFS Branch or commit hash for android16-6.12'
         type: string
-        default: ''
+        default: '698aa6a4ddca6fa5359871daf13f93583fb8282a'
 
 jobs:
   set-op-model:
