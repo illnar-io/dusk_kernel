@@ -785,7 +785,6 @@ runs:
           fi
           
           local aria2_headers=(
-            "--header=User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             "--header=Accept: */*"
             "--header=Connection: keep-alive"
           )
@@ -854,7 +853,8 @@ runs:
           return 1
         }
         
-        retry_clone "https://github.com/WildKernels/kernel_patches.git" "main" "1"
+        retry_clone "https://github.com/Ante0/kernel_patches.git" "main" "0"
+        git -C "$KERNEL_PATCHES_FOLDER" checkout 559df73db4b676c777450f81ff60b9788d89480b
         
         if [ "${{ env.OP_SUSFS }}" = true ]; then
           echo "Using SUSFS branch/commit: $SUSFS_BRANCH"
@@ -1102,7 +1102,7 @@ runs:
               echo "Patching Hook Mode!"
               patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/overwrite_hook_mode.patch"
               echo "Patching KSU_TOOLKIT Support for SusFS kernel!"
-              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/ksu_toolkit.patch"
+              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/ksu_toolkit.patch" || true
             else
               cd "$KSU_FOLDER"
               patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || true
